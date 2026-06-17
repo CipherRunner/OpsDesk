@@ -24,3 +24,9 @@ management:
   endpoint:
     health:
       show-details: never
+
+opsdesk:
+  security:
+    jwt:
+      secret: ${OPSDESK_JWT_SECRET:dev-only-change-this-jwt-secret-for-opsdesk}
+      expiration: PT2H

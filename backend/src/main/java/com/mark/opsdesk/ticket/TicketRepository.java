@@ -11,4 +11,17 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
 	Page<Ticket> findByPriority(TicketPriority priority, Pageable pageable);
 
 	Page<Ticket> findByStatusAndPriority(TicketStatus status, TicketPriority priority, Pageable pageable);
+
+	Page<Ticket> findByCreatedBy(String createdBy, Pageable pageable);
+
+	Page<Ticket> findByCreatedByAndStatus(String createdBy, TicketStatus status, Pageable pageable);
+
+	Page<Ticket> findByCreatedByAndPriority(String createdBy, TicketPriority priority, Pageable pageable);
+
+	Page<Ticket> findByCreatedByAndStatusAndPriority(
+			String createdBy,
+			TicketStatus status,
+			TicketPriority priority,
+			Pageable pageable
+	);
 }

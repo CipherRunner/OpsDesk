@@ -19,10 +19,6 @@ public record CreateTicketRequest(
 		@NotNull
 		TicketPriority priority,
 
-		@NotBlank
-		@Size(max = 255)
-		String createdBy,
-
 		@Size(max = 255)
 		String assignedTo
 ) {

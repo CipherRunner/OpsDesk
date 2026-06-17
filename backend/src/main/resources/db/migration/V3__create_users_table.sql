@@ -1,0 +1,9 @@
+CREATE TABLE users (
+	id BIGSERIAL PRIMARY KEY,
+	username VARCHAR(255) NOT NULL,
+	password_hash VARCHAR(255) NOT NULL,
+	role VARCHAR(32) NOT NULL,
+	created_at TIMESTAMP(6) WITH TIME ZONE NOT NULL,
+	updated_at TIMESTAMP(6) WITH TIME ZONE NOT NULL,
+	CONSTRAINT uk_users_username UNIQUE (username)
+);
