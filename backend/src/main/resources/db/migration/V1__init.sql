@@ -1,0 +1,2 @@
+-- Initial Flyway migration
+-- Tables will be added in Sprint 2mvn test
