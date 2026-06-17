@@ -35,3 +35,7 @@ logs/
 .pytest_cache/
 .nyc_output/
 
+
+# Local environment files
+.env.local
+backend/.env.local
