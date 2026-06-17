@@ -2,7 +2,7 @@
 
 OpsDesk is a cloud-ready IT service desk web application for managing support tickets, users, roles, comments, and basic incident workflows.
 
-The goal of this project is to demonstrate a realistic Junior+ / borderline Mid-Level fullstack application with a Java Spring Boot backend, React TypeScript frontend, PostgreSQL database, tests, Docker Compose, and GitHub Actions CI.
+The goal of this project is to demonstrate a Junior+ / borderline Mid-Level fullstack application with a Java Spring Boot backend, React TypeScript frontend, PostgreSQL database, tests, Docker Compose, and GitHub Actions CI.
 
 ## Tech Stack
 
