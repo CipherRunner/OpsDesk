@@ -1,6 +1,9 @@
 package com.mark.opsdesk.ticket;
 
 import com.mark.opsdesk.ticket.dto.CreateTicketRequest;
+import com.mark.opsdesk.ticket.dto.CreateTicketCommentRequest;
+import com.mark.opsdesk.ticket.dto.TicketAuditEntryResponse;
+import com.mark.opsdesk.ticket.dto.TicketCommentResponse;
 import com.mark.opsdesk.ticket.dto.TicketResponse;
 import com.mark.opsdesk.ticket.dto.UpdateTicketAssigneeRequest;
 import com.mark.opsdesk.ticket.dto.UpdateTicketPriorityRequest;
@@ -21,14 +24,24 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/tickets")
 public class TicketController {
 
 	private final TicketService ticketService;
+	private final TicketCommentService ticketCommentService;
+	private final TicketAuditService ticketAuditService;
 
-	public TicketController(TicketService ticketService) {
+	public TicketController(
+			TicketService ticketService,
+			TicketCommentService ticketCommentService,
+			TicketAuditService ticketAuditService
+	) {
 		this.ticketService = ticketService;
+		this.ticketCommentService = ticketCommentService;
+		this.ticketAuditService = ticketAuditService;
 	}
 
 	@PostMapping
@@ -72,5 +85,23 @@ public class TicketController {
 			@Valid @RequestBody UpdateTicketPriorityRequest request
 	) {
 		return ticketService.updatePriority(id, request);
+	}
+
+	@PostMapping("/{id}/comments")
+	public ResponseEntity<TicketCommentResponse> addComment(
+			@PathVariable Long id,
+			@Valid @RequestBody CreateTicketCommentRequest request
+	) {
+		return ResponseEntity.status(HttpStatus.CREATED).body(ticketCommentService.addComment(id, request));
+	}
+
+	@GetMapping("/{id}/comments")
+	public List<TicketCommentResponse> getComments(@PathVariable Long id) {
+		return ticketCommentService.getComments(id);
+	}
+
+	@GetMapping("/{id}/audit")
+	public List<TicketAuditEntryResponse> getAuditEntries(@PathVariable Long id) {
+		return ticketAuditService.getAuditEntries(id);
 	}
 }
