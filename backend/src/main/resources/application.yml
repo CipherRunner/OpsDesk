@@ -3,9 +3,9 @@ spring:
     name: opsdesk
 
   datasource:
-    url: jdbc:postgresql://localhost:5433/opsdesk
-    username: opsdesk
-    password: opsdesk
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/opsdesk}
+    username: ${SPRING_DATASOURCE_USERNAME:opsdesk}
+    password: ${SPRING_DATASOURCE_PASSWORD:opsdesk}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -26,7 +26,9 @@ management:
       show-details: never
 
 opsdesk:
+  demo-data:
+    enabled: ${OPS_DESK_DEMO_DATA_ENABLED:false}
   security:
     jwt:
-      secret: ${OPSDESK_JWT_SECRET:dev-only-change-this-jwt-secret-for-opsdesk}
+      secret: ${OPS_DESK_JWT_SECRET:dev-only-change-this-jwt-secret-for-opsdesk}
       expiration: PT2H

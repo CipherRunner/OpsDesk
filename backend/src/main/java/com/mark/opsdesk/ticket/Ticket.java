@@ -49,6 +49,17 @@ public class Ticket {
 	protected Ticket() {
 	}
 
+	public static Ticket create(
+			String title,
+			String description,
+			TicketStatus status,
+			TicketPriority priority,
+			String createdBy,
+			String assignedTo
+	) {
+		return new Ticket(title, description, status, priority, createdBy, assignedTo);
+	}
+
 	Ticket(
 			String title,
 			String description,

@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-opsdesk}
+      POSTGRES_USER: ${POSTGRES_USER:-opsdesk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opsdesk}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-opsdesk}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-opsdesk}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-opsdesk}
+      OPS_DESK_JWT_SECRET: ${OPS_DESK_JWT_SECRET:-dev-only-change-this-jwt-secret-for-local-compose}
+      SPRING_PROFILES_ACTIVE: docker
+      OPS_DESK_DEMO_DATA_ENABLED: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+
+volumes:
+  postgres-data:
