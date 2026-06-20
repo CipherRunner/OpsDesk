@@ -1,4 +1,5 @@
 import { http } from './http'
+import type { CurrentUserRole } from '../auth/authStorage'
 
 export type LoginRequest = {
   username: string
@@ -8,7 +9,7 @@ export type LoginRequest = {
 export type CurrentUser = {
   id: number
   username: string
-  role: string
+  role: CurrentUserRole
 }
 
 export type AuthResponse = {

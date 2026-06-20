@@ -2,7 +2,11 @@ import type { FormEvent } from 'react'
 import { useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { login } from '../api/authApi'
-import { isAuthenticated, setToken } from '../auth/authStorage'
+import {
+  isAuthenticated,
+  setCurrentUserRole,
+  setToken,
+} from '../auth/authStorage'
 
 type LoginLocationState = {
   from?: {
@@ -33,6 +37,7 @@ export function LoginPage() {
       const response = await login({ username, password })
 
       setToken(response.token)
+      setCurrentUserRole(response.user.role)
       navigate(redirectTo, { replace: true })
     } catch {
       setError('Invalid username or password.')
