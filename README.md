@@ -249,9 +249,3 @@ No deployment workflow is currently defined; the repository currently has CI cov
 - [Tickets list](docs/screenshots/queue_page.png)
 - [Ticket detail](docs/screenshots/ticket_page.png)
 
-## Future Improvements
-
-- Add automated frontend tests for login, ticket list, ticket creation, and ticket detail flows.
-- Add generated API documentation, for example OpenAPI/Swagger.
-- Add deployment automation for a staging or production environment.
-- Add notification or assignment workflows for ticket updates.
