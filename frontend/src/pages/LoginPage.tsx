@@ -22,10 +22,10 @@ export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const redirectTo =
-    (location.state as LoginLocationState | null)?.from?.pathname ?? '/dashboard'
+    (location.state as LoginLocationState | null)?.from?.pathname ?? '/tickets'
 
   if (isAuthenticated()) {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to="/tickets" replace />
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {

@@ -2,7 +2,6 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { removeToken } from '../auth/authStorage'
 
 const navItems = [
-  { to: '/dashboard', label: 'Dashboard' },
   { to: '/tickets', label: 'Tickets' },
 ]
 
