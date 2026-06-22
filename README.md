@@ -41,6 +41,14 @@ The application is intentionally kept as one project with two main application m
 - Docker Compose with PostgreSQL, backend, and frontend services
 - GitHub Actions CI
 
+## Screenshots
+
+<img src="docs/screenshots/login_page.png" alt="Login screen" width="760">
+
+<img src="docs/screenshots/queue_page.png" alt="Tickets list" width="760">
+
+<img src="docs/screenshots/ticket_page.png" alt="Ticket detail" width="760">
+
 ## Main Features
 
 - JWT login with protected frontend routes.
@@ -242,10 +250,3 @@ GitHub Actions is configured in `.github/workflows/ci.yml` and runs on `push` an
 - Frontend job: sets up Node.js 24, uses the frontend `package-lock.json` for npm caching, runs `npm ci`, and runs `npm run build` from `frontend/`.
 
 No deployment workflow is currently defined; the repository currently has CI coverage only.
-
-## Screenshots
-
-- [Login screen](docs/screenshots/login_page.png)
-- [Tickets list](docs/screenshots/queue_page.png)
-- [Ticket detail](docs/screenshots/ticket_page.png)
-
