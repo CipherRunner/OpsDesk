@@ -162,6 +162,12 @@ The Compose stack starts:
 
 The frontend container proxies `/api` to the backend container. Docker Compose enables demo data with `OPS_DESK_DEMO_DATA_ENABLED=true`.
 
+## Deployment Preparation
+
+Deployment preparation notes are documented in [docs/deployment.md](docs/deployment.md). The repository includes `docker-compose.prod.yml` as a minimal production-like reference for a single Docker host, but OpsDesk is not currently deployed by this repository.
+
+For production-like runs, provide secrets such as `POSTGRES_PASSWORD` and `OPS_DESK_JWT_SECRET` through the deployment environment or an untracked env file. Do not commit real secrets, registry credentials, or cloud credentials.
+
 ## Example Demo Users
 
 Demo users are created by `DemoDataInitializer` when demo data is enabled.
