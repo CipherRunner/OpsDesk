@@ -11,7 +11,6 @@ permissions:
 
 jobs:
   build-and-push:
-    needs: [backend]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -39,24 +38,5 @@ jobs:
           push: true
           tags: ${{ steps.meta-backend.outputs.tags }}
           labels: ${{ steps.meta-backend.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-        # --- Frontend ---
-      - name: Docker metadata (frontend)
-        id: meta-frontend
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository_owner }}/opsdesk-frontend
-          tags: |
-            type=sha,prefix=sha-
-            type=raw,value=latest
-      - name: Build and push frontend
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          push: true
-          tags: ${{ steps.meta-frontend.outputs.tags }}
-          labels: ${{ steps.meta-frontend.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
