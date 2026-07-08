@@ -2,6 +2,7 @@
 Java 21 · Spring Boot 3 · React · PostgreSQL · Docker · GitHub Actions
 [![Release](https://github.com/CipherRunner/OpsDesk/actions/workflows/release.yml/badge.svg)](https://github.com/CipherRunner/OpsDesk/actions/workflows/release.yml)
 
+[![Release](https://github.com/CipherRunner/OpsDesk/actions/workflows/release.yml/badge.svg)](https://github.com/CipherRunner/OpsDesk/actions/workflows/release.yml)
 [![CI](https://github.com/CipherRunner/OpsDesk/actions/workflows/ci.yml/badge.svg)](https://github.com/CipherRunner/OpsDesk/actions/workflows/ci.yml)
 
 ## Project Overview
