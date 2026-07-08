@@ -39,3 +39,7 @@ logs/
 # Local environment files
 .env.local
 backend/.env.local
+
+
+#Terraform files
+*.tfvars

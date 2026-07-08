@@ -24,6 +24,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-opsdesk}
       OPS_DESK_JWT_SECRET: ${OPS_DESK_JWT_SECRET:-dev-only-change-this-jwt-secret-for-local-compose}
       SPRING_PROFILES_ACTIVE: docker
+      # demo only
       OPS_DESK_DEMO_DATA_ENABLED: "true"
     depends_on:
       postgres:

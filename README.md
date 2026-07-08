@@ -1,4 +1,5 @@
 # OpsDesk
+Java 21 · Spring Boot 3 · React · PostgreSQL · Docker · GitHub Actions
 
 [![CI](https://github.com/CipherRunner/OpsDesk/actions/workflows/ci.yml/badge.svg)](https://github.com/CipherRunner/OpsDesk/actions/workflows/ci.yml)
 
@@ -10,6 +11,28 @@ The application is intentionally kept as one project with two main application m
 
 - `backend/` - Java Spring Boot REST API
 - `frontend/` - React single-page application served by Vite in development and Nginx in Docker
+
+## Main Features
+
+- JWT login with protected frontend routes.
+- Role model with `ADMIN`, `AGENT`, and `REQUESTER`.
+- Demo users and demo tickets when demo data is enabled.
+- Ticket creation for authenticated non-agent users.
+- Ticket list with status and priority filters.
+- Ticket detail view with status, priority, and assignee updates for admins and agents.
+- Requester-scoped ticket visibility.
+- Ticket comments.
+- Ticket audit records for creation, status changes, priority changes, assignee changes, and comments.
+- Flyway-managed database schema.
+- Backend unit and integration tests, including PostgreSQL-backed integration tests with Testcontainers.
+
+## Screenshots
+
+<img src="docs/screenshots/login_page.png" alt="Login screen" width="760">
+
+<img src="docs/screenshots/queue_page.png" alt="Tickets list" width="760">
+
+<img src="docs/screenshots/ticket_page.png" alt="Ticket detail" width="760">
 
 ## Tech Stack
 
@@ -41,28 +64,6 @@ The application is intentionally kept as one project with two main application m
 - Docker Compose with PostgreSQL, backend, and frontend services
 - GitHub Actions CI
 
-## Screenshots
-
-<img src="docs/screenshots/login_page.png" alt="Login screen" width="760">
-
-<img src="docs/screenshots/queue_page.png" alt="Tickets list" width="760">
-
-<img src="docs/screenshots/ticket_page.png" alt="Ticket detail" width="760">
-
-## Main Features
-
-- JWT login with protected frontend routes.
-- Role model with `ADMIN`, `AGENT`, and `REQUESTER`.
-- Demo users and demo tickets when demo data is enabled.
-- Ticket creation for authenticated non-agent users.
-- Ticket list with status and priority filters.
-- Ticket detail view with status, priority, and assignee updates for admins and agents.
-- Requester-scoped ticket visibility.
-- Ticket comments.
-- Ticket audit records for creation, status changes, priority changes, assignee changes, and comments.
-- Flyway-managed database schema.
-- Backend unit and integration tests, including PostgreSQL-backed integration tests with Testcontainers.
-
 ## Architecture Overview
 
 ```mermaid
@@ -80,6 +81,13 @@ flowchart LR
     CI["GitHub Actions"] --> BackendTests["mvn test"]
     CI --> FrontendBuild["npm ci + npm run build"]
 ```
+
+## Roadmap
+- [x] Docker Compose + CI pipeline
+- [ ] Kubernetes (raw manifests, kind → AKS)
+- [ ] Terraform (Azure AKS + Managed PostgreSQL)
+- [ ] Full CI/CD pipeline (auto-deploy on push)
+- [ ] Monitoring (Prometheus · Grafana · Loki)
 
 ### Repository Structure
 
@@ -178,6 +186,8 @@ For production-like runs, provide secrets such as `POSTGRES_PASSWORD` and `OPS_D
 
 ## Example Demo Users
 
+⚠️ Demo credentials only. Created when OPS_DESK_DEMO_DATA_ENABLED=true
+
 Demo users are created by `DemoDataInitializer` when demo data is enabled.
 
 | Username | Password | Role |
@@ -241,6 +251,15 @@ npm run lint
 ```
 
 There is no dedicated frontend test script in `frontend/package.json` at the moment.
+
+## Getting Started
+```bash
+docker compose up --build
+```
+
+App available at: http://localhost:3000/login
+
+Backend health check: http://localhost:8080/actuator/health
 
 ## CI/CD
 
