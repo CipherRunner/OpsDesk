@@ -266,9 +266,14 @@ Backend health check: http://localhost:8080/actuator/health
 
 ## CI/CD
 
-GitHub Actions is configured in `.github/workflows/ci.yml` and runs on `push` and `pull_request`.
+GitHub Actions is configured in .github/workflows/ci.yml and runs on push and pull_request.
 
-- Backend job: starts a PostgreSQL 16 service, sets up Java 21 with Temurin, caches Maven dependencies, and runs `mvn test` from `backend/`.
-- Frontend job: sets up Node.js 24, uses the frontend `package-lock.json` for npm caching, runs `npm ci`, and runs `npm run build` from `frontend/`.
+Backend job: starts a PostgreSQL 16 service, sets up Java 21 with Temurin, caches Maven dependencies, and runs mvn test from backend/.
+Frontend job: sets up Node.js 24, uses the frontend package-lock.json for npm caching, runs npm ci, and runs npm run build from frontend/.
 
-No deployment workflow is currently defined; the repository currently has CI coverage only.
+A separate .github/workflows/release.yml publishes Docker images on every push to main (or manually via workflow_dispatch). It builds and pushes both opsdesk-backend and opsdesk-frontend to GitHub Container Registry (ghcr.io/<owner>/opsdesk-backend and ghcr.io/<owner>/opsdesk-frontend), tagging each image with the commit SHA (sha-<short-sha>) as well as a floating latest tag. Build layers are cached via GitHub Actions cache (type=gha) to keep subsequent builds fast.
+
+
+
+
+
