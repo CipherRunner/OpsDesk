@@ -11,11 +11,11 @@ COPY . .
 RUN npm run build
 
 # --- Runtime stage ---
-FROM nginx:1.29-alpine
+FROM nginxinc/nginx-unprivileged:1.29-alpine
 
 COPY --from=build /workspace/dist /usr/share/nginx/html
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 
-EXPOSE 80
+EXPOSE 8080
