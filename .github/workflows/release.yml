@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -12,6 +13,15 @@ permissions:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - service: backend
+            image: opsdesk-backend
+            context: ./backend
+          - service: frontend
+            image: opsdesk-frontend
+            context: ./frontend
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,20 +33,20 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Docker metadata (backend)
-        id: meta-backend
+      - name: Docker metadata
+        id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/opsdesk-backend
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
           tags: |
-              type=sha,prefix=sha-
-              type=raw,value=latest
-      - name: Build and push backend
+            type=sha,prefix=sha-
+            type=raw,value=latest
+      - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: ./backend
+          context: ${{ matrix.context }}
           push: true
-          tags: ${{ steps.meta-backend.outputs.tags }}
-          labels: ${{ steps.meta-backend.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
