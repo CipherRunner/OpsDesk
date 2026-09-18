@@ -24,7 +24,6 @@ For `docker-compose.prod.yml`, set these values outside the repository before ru
 | `POSTGRES_DB` | No | Database name. Defaults to `opsdesk`. |
 | `POSTGRES_USER` | No | Database user. Defaults to `opsdesk`. |
 | `FRONTEND_PORT` | No | Host port for the frontend container. Defaults to `3000`. |
-| `SPRING_PROFILES_ACTIVE` | No | Defaults to `docker` in the production-like compose file. |
 
 If the backend is deployed outside Compose, provide the equivalent Spring datasource variables directly:
 
