@@ -1,5 +1,8 @@
 package com.mark.opsdesk.ticket;
 
+import com.mark.opsdesk.common.exception.ForbiddenException;
+import com.mark.opsdesk.common.exception.NotFoundException;
+import com.mark.opsdesk.common.exception.UnauthorizedException;
 import com.mark.opsdesk.security.AuthenticatedUser;
 import com.mark.opsdesk.security.CurrentUserService;
 import com.mark.opsdesk.ticket.dto.CreateTicketRequest;
@@ -12,10 +15,8 @@ import com.mark.opsdesk.user.User;
 import com.mark.opsdesk.user.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Objects;
 
@@ -43,7 +44,7 @@ public class TicketService {
 	public TicketResponse createTicket(CreateTicketRequest request) {
 		AuthenticatedUser currentUser = currentUserService.requireCurrentUser();
 		if (currentUser.role() == Role.AGENT) {
-			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+			throw new ForbiddenException("Access denied");
 		}
 		User actor = findUser(currentUser.username());
 
@@ -152,19 +153,19 @@ public class TicketService {
 	private AuthenticatedUser requireAdminOrAgent() {
 		AuthenticatedUser currentUser = currentUserService.requireCurrentUser();
 		if (currentUser.role() != Role.ADMIN && currentUser.role() != Role.AGENT) {
-			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+			throw new ForbiddenException("Access denied");
 		}
 		return currentUser;
 	}
 
 	private Ticket findTicket(Long id) {
 		return ticketRepository.findById(id)
-				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+				.orElseThrow(() -> new NotFoundException("Ticket not found"));
 	}
 
 	private User findUser(String username) {
 		return userRepository.findByUsername(username)
-				.orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required"));
+				.orElseThrow(() -> new UnauthorizedException("Authentication required"));
 	}
 
 	private Page<Ticket> getRequesterTickets(
@@ -188,7 +189,7 @@ public class TicketService {
 	private void ensureCanView(Ticket ticket) {
 		AuthenticatedUser currentUser = currentUserService.requireCurrentUser();
 		if (currentUser.role() == Role.REQUESTER && !ticket.getCreatedBy().equals(currentUser.username())) {
-			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found");
+			throw new NotFoundException("Ticket not found");
 		}
 	}
 

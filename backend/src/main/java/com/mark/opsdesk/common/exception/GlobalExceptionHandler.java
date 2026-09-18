@@ -15,7 +15,6 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -76,23 +75,20 @@ public class GlobalExceptionHandler {
 		return badRequest("Missing required parameter '" + exception.getParameterName() + "'", request);
 	}
 
-	@ExceptionHandler(ResponseStatusException.class)
-	public ResponseEntity<ApiErrorResponse> handleResponseStatus(
-			ResponseStatusException exception,
+	@ExceptionHandler(ApplicationException.class)
+	public ResponseEntity<ApiErrorResponse> handleApplicationException(
+			ApplicationException exception,
 			HttpServletRequest request
 	) {
-		HttpStatusCode statusCode = exception.getStatusCode();
-		String error = getReasonPhrase(statusCode);
-		String message = exception.getReason() != null ? exception.getReason() : error;
-
+		HttpStatus status = exception.getStatus();
 		ApiErrorResponse response = ApiErrorResponse.of(
-				statusCode.value(),
-				error,
-				message,
+				status.value(),
+				status.getReasonPhrase(),
+				exception.getMessage(),
 				request.getRequestURI()
 		);
 
-		return ResponseEntity.status(statusCode).body(response);
+		return ResponseEntity.status(status).body(response);
 	}
 
 	@ExceptionHandler(Exception.class)

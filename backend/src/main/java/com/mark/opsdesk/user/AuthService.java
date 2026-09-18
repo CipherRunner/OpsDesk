@@ -1,14 +1,13 @@
 package com.mark.opsdesk.user;
 
+import com.mark.opsdesk.common.exception.UnauthorizedException;
 import com.mark.opsdesk.security.JwtService;
 import com.mark.opsdesk.user.dto.AuthResponse;
 import com.mark.opsdesk.user.dto.CurrentUserResponse;
 import com.mark.opsdesk.user.dto.LoginRequest;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class AuthService {
@@ -40,7 +39,7 @@ public class AuthService {
 		return new AuthResponse(jwtService.createToken(user), currentUser);
 	}
 
-	private ResponseStatusException invalidCredentials() {
-		return new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid username or password");
+	private UnauthorizedException invalidCredentials() {
+		return new UnauthorizedException("Invalid username or password");
 	}
 }

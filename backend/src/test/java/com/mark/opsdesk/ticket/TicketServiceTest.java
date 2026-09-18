@@ -1,5 +1,7 @@
 package com.mark.opsdesk.ticket;
 
+import com.mark.opsdesk.common.exception.ForbiddenException;
+import com.mark.opsdesk.common.exception.NotFoundException;
 import com.mark.opsdesk.security.AuthenticatedUser;
 import com.mark.opsdesk.security.CurrentUserService;
 import com.mark.opsdesk.ticket.dto.CreateTicketRequest;
@@ -18,9 +20,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.List;
@@ -100,9 +100,7 @@ class TicketServiceTest {
 				TicketPriority.MEDIUM,
 				null
 		)))
-				.isInstanceOf(ResponseStatusException.class)
-				.extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
-				.isEqualTo(HttpStatus.FORBIDDEN);
+				.isInstanceOf(ForbiddenException.class);
 
 		verifyNoInteractions(ticketRepository, userRepository, ticketAuditService);
 	}
@@ -145,9 +143,7 @@ class TicketServiceTest {
 				99L,
 				new UpdateTicketStatusRequest(TicketStatus.RESOLVED)
 		))
-				.isInstanceOf(ResponseStatusException.class)
-				.extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
-				.isEqualTo(HttpStatus.FORBIDDEN);
+				.isInstanceOf(ForbiddenException.class);
 
 		verifyNoInteractions(ticketRepository, userRepository, ticketAuditService);
 	}
@@ -190,9 +186,7 @@ class TicketServiceTest {
 				404L,
 				new UpdateTicketStatusRequest(TicketStatus.RESOLVED)
 		))
-				.isInstanceOf(ResponseStatusException.class)
-				.extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
-				.isEqualTo(HttpStatus.NOT_FOUND);
+				.isInstanceOf(NotFoundException.class);
 
 		verify(ticketAuditService, never()).record(any(), eq(actor), any(), isNull(), isNull());
 	}

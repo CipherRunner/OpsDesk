@@ -1,5 +1,7 @@
 package com.mark.opsdesk.ticket;
 
+import com.mark.opsdesk.common.exception.NotFoundException;
+import com.mark.opsdesk.common.exception.UnauthorizedException;
 import com.mark.opsdesk.security.AuthenticatedUser;
 import com.mark.opsdesk.security.CurrentUserService;
 import com.mark.opsdesk.ticket.dto.CreateTicketCommentRequest;
@@ -7,10 +9,8 @@ import com.mark.opsdesk.ticket.dto.TicketCommentResponse;
 import com.mark.opsdesk.user.Role;
 import com.mark.opsdesk.user.User;
 import com.mark.opsdesk.user.UserRepository;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -64,17 +64,17 @@ public class TicketCommentService {
 
 	private Ticket findTicket(Long id) {
 		return ticketRepository.findById(id)
-				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+				.orElseThrow(() -> new NotFoundException("Ticket not found"));
 	}
 
 	private User findUser(String username) {
 		return userRepository.findByUsername(username)
-				.orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required"));
+				.orElseThrow(() -> new UnauthorizedException("Authentication required"));
 	}
 
 	private void ensureCanView(Ticket ticket, AuthenticatedUser currentUser) {
 		if (currentUser.role() == Role.REQUESTER && !ticket.getCreatedBy().equals(currentUser.username())) {
-			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found");
+			throw new NotFoundException("Ticket not found");
 		}
 	}
 
