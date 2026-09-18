@@ -68,6 +68,7 @@ public abstract class IntegrationTestBase {
 		registry.add("spring.datasource.password", POSTGRES::getPassword);
 		registry.add("spring.datasource.driver-class-name", POSTGRES::getDriverClassName);
 		registry.add("opsdesk.demo-data.enabled", () -> "false");
+		registry.add("opsdesk.security.jwt.secret", () -> "integration-test-secret-integration-test-secret");
 	}
 
 	@BeforeEach

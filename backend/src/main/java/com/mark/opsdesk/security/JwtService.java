@@ -30,14 +30,34 @@ public class JwtService {
 	private final byte[] secret;
 	private final Duration expiration;
 
+	/**
+	 * HS256 needs a key of at least 256 bits; shorter secrets make the signature brute-forceable.
+	 */
+	static final int MIN_SECRET_BYTES = 32;
+
 	public JwtService(
 			ObjectMapper objectMapper,
-			@Value("${opsdesk.security.jwt.secret:dev-only-change-this-jwt-secret-for-opsdesk}") String secret,
+			@Value("${opsdesk.security.jwt.secret:}") String secret,
 			@Value("${opsdesk.security.jwt.expiration:PT2H}") Duration expiration
 	) {
 		this.objectMapper = objectMapper;
-		this.secret = secret.getBytes(StandardCharsets.UTF_8);
+		this.secret = requireStrongSecret(secret);
 		this.expiration = expiration;
+	}
+
+	private static byte[] requireStrongSecret(String secret) {
+		if (secret == null || secret.isBlank()) {
+			throw new IllegalStateException(
+					"JWT secret is not configured. Set OPS_DESK_JWT_SECRET to a random value of at least "
+							+ MIN_SECRET_BYTES + " characters, or activate the 'dev' profile for local development.");
+		}
+		byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
+		if (bytes.length < MIN_SECRET_BYTES) {
+			throw new IllegalStateException(
+					"JWT secret is too short (" + bytes.length + " bytes). OPS_DESK_JWT_SECRET must be at least "
+							+ MIN_SECRET_BYTES + " bytes for HS256.");
+		}
+		return bytes;
 	}
 
 	public String createToken(User user) {
