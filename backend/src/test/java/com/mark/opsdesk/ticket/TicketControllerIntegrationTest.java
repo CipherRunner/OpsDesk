@@ -148,6 +148,53 @@ class TicketControllerIntegrationTest extends IntegrationTestBase {
 				.andExpect(jsonPath("$.content[0].status").value("RESOLVED"));
 	}
 
+	@Test
+	void filteringByPriorityAndStatusCombines() throws Exception {
+		long urgentOpen = createTicket(requesterToken, "Urgent open", TicketPriority.URGENT);
+		long urgentResolved = createTicket(requesterToken, "Urgent resolved", TicketPriority.URGENT);
+		setStatus(urgentResolved, TicketStatus.RESOLVED);
+		createTicket(requesterToken, "Low open", TicketPriority.LOW);
+
+		mockMvc.perform(get("/api/tickets")
+						.header(HttpHeaders.AUTHORIZATION, bearer(agentToken))
+						.param("priority", "URGENT"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.content", hasSize(2)));
+
+		mockMvc.perform(get("/api/tickets")
+						.header(HttpHeaders.AUTHORIZATION, bearer(agentToken))
+						.param("priority", "URGENT")
+						.param("status", "OPEN"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.content", hasSize(1)))
+				.andExpect(jsonPath("$.content[0].id").value(urgentOpen));
+	}
+
+	@Test
+	void requesterListsOnlyOwnTicketsWhileAgentSeesAll() throws Exception {
+		createTestUser("other-requester", Role.REQUESTER);
+		String otherToken = login("other-requester");
+		createTicket(requesterToken, "Mine");
+		createTicket(otherToken, "Theirs");
+
+		mockMvc.perform(get("/api/tickets")
+						.header(HttpHeaders.AUTHORIZATION, bearer(requesterToken)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.content", hasSize(1)))
+				.andExpect(jsonPath("$.content[0].title").value("Mine"));
+
+		mockMvc.perform(get("/api/tickets")
+						.header(HttpHeaders.AUTHORIZATION, bearer(requesterToken))
+						.param("status", "OPEN"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.content", hasSize(1)));
+
+		mockMvc.perform(get("/api/tickets")
+						.header(HttpHeaders.AUTHORIZATION, bearer(agentToken)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.content", hasSize(2)));
+	}
+
 	private void setStatus(long ticketId, TicketStatus status) throws Exception {
 		mockMvc.perform(patch("/api/tickets/{id}/status", ticketId)
 						.header(HttpHeaders.AUTHORIZATION, bearer(agentToken))
@@ -157,10 +204,14 @@ class TicketControllerIntegrationTest extends IntegrationTestBase {
 	}
 
 	private long createTicket(String token, String title) throws Exception {
+		return createTicket(token, title, TicketPriority.MEDIUM);
+	}
+
+	private long createTicket(String token, String title, TicketPriority priority) throws Exception {
 		Map<String, Object> request = new LinkedHashMap<>();
 		request.put("title", title);
 		request.put("description", title + " description");
-		request.put("priority", TicketPriority.MEDIUM);
+		request.put("priority", priority);
 
 		MvcResult result = mockMvc.perform(post("/api/tickets")
 						.header(HttpHeaders.AUTHORIZATION, bearer(token))

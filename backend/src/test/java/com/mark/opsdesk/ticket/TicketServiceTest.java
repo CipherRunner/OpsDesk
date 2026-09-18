@@ -20,6 +20,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
@@ -28,6 +29,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -171,39 +173,25 @@ class TicketServiceTest {
 	}
 
 	@Test
-	void requesterStatusFilterUsesRequesterScopedRepositoryQuery() {
+	void getTicketsMapsFilteredPageToResponses() {
 		Pageable pageable = PageRequest.of(0, 20);
 		AuthenticatedUser requester = new AuthenticatedUser("requester", Role.REQUESTER);
 		Ticket ticket = persistedTicket(11L, "Open monitor issue", TicketStatus.OPEN, TicketPriority.LOW, "requester");
 		when(currentUserService.requireCurrentUser()).thenReturn(requester);
 		when(accessPolicy.isRequesterScoped(requester)).thenReturn(true);
-		when(ticketRepository.findByCreatedByAndStatus("requester", TicketStatus.OPEN, pageable))
+		when(ticketRepository.findAll(any(Specification.class), eq(pageable)))
 				.thenReturn(new PageImpl<>(List.of(ticket), pageable, 1));
 
 		Page<TicketResponse> response = ticketService.getTickets(TicketStatus.OPEN, null, pageable);
 
+		assertThat(response.getTotalElements()).isEqualTo(1);
 		assertThat(response.getContent())
 				.singleElement()
 				.satisfies(ticketResponse -> {
+					assertThat(ticketResponse.id()).isEqualTo(11L);
 					assertThat(ticketResponse.title()).isEqualTo("Open monitor issue");
-					assertThat(ticketResponse.status()).isEqualTo(TicketStatus.OPEN);
 					assertThat(ticketResponse.createdBy()).isEqualTo("requester");
 				});
-		verify(ticketRepository, never()).findByStatus(any(TicketStatus.class), any(Pageable.class));
-	}
-
-	@Test
-	void agentStatusFilterUsesUnscopedRepositoryQuery() {
-		Pageable pageable = PageRequest.of(0, 20);
-		AuthenticatedUser agent = new AuthenticatedUser("agent", Role.AGENT);
-		when(currentUserService.requireCurrentUser()).thenReturn(agent);
-		when(accessPolicy.isRequesterScoped(agent)).thenReturn(false);
-		when(ticketRepository.findByStatus(TicketStatus.OPEN, pageable)).thenReturn(Page.empty(pageable));
-
-		ticketService.getTickets(TicketStatus.OPEN, null, pageable);
-
-		verify(ticketRepository).findByStatus(TicketStatus.OPEN, pageable);
-		verify(ticketRepository, never()).findByCreatedByAndStatus(any(), any(), any());
 	}
 
 	private static Ticket persistedTicket(

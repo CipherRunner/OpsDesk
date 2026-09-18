@@ -10,6 +10,7 @@ import com.mark.opsdesk.ticket.dto.UpdateTicketStatusRequest;
 import com.mark.opsdesk.user.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,23 +59,15 @@ public class TicketService {
 	@Transactional(readOnly = true)
 	public Page<TicketResponse> getTickets(TicketStatus status, TicketPriority priority, Pageable pageable) {
 		AuthenticatedUser currentUser = currentUserService.requireCurrentUser();
-		if (accessPolicy.isRequesterScoped(currentUser)) {
-			return getRequesterTickets(currentUser.username(), status, priority, pageable).map(this::toResponse);
-		}
+		String scopeToCreator = accessPolicy.isRequesterScoped(currentUser) ? currentUser.username() : null;
 
-		Page<Ticket> tickets;
+		Specification<Ticket> filter = Specification.allOf(
+				TicketSpecifications.createdBy(scopeToCreator),
+				TicketSpecifications.hasStatus(status),
+				TicketSpecifications.hasPriority(priority)
+		);
 
-		if (status != null && priority != null) {
-			tickets = ticketRepository.findByStatusAndPriority(status, priority, pageable);
-		} else if (status != null) {
-			tickets = ticketRepository.findByStatus(status, pageable);
-		} else if (priority != null) {
-			tickets = ticketRepository.findByPriority(priority, pageable);
-		} else {
-			tickets = ticketRepository.findAll(pageable);
-		}
-
-		return tickets.map(this::toResponse);
+		return ticketRepository.findAll(filter, pageable).map(this::toResponse);
 	}
 
 	@Transactional(readOnly = true)
@@ -137,24 +130,6 @@ public class TicketService {
 		}
 		ticketRepository.flush();
 		return toResponse(ticket);
-	}
-
-	private Page<Ticket> getRequesterTickets(
-			String username,
-			TicketStatus status,
-			TicketPriority priority,
-			Pageable pageable
-	) {
-		if (status != null && priority != null) {
-			return ticketRepository.findByCreatedByAndStatusAndPriority(username, status, priority, pageable);
-		}
-		if (status != null) {
-			return ticketRepository.findByCreatedByAndStatus(username, status, pageable);
-		}
-		if (priority != null) {
-			return ticketRepository.findByCreatedByAndPriority(username, priority, pageable);
-		}
-		return ticketRepository.findByCreatedBy(username, pageable);
 	}
 
 	private TicketResponse toResponse(Ticket ticket) {
