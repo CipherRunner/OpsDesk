@@ -51,6 +51,7 @@ const baseTicket: Ticket = {
   createdBy: 'alice',
   createdAt: '2026-06-20T09:15:00Z',
   updatedAt: '2026-06-21T10:30:00Z',
+  allowedStatusTransitions: ['IN_PROGRESS', 'RESOLVED', 'CLOSED'],
 }
 
 function renderApp(initialPath: string) {

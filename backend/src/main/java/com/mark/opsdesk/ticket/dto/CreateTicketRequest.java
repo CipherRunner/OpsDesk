@@ -1,7 +1,6 @@
 package com.mark.opsdesk.ticket.dto;
 
 import com.mark.opsdesk.ticket.TicketPriority;
-import com.mark.opsdesk.ticket.TicketStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -13,8 +12,6 @@ public record CreateTicketRequest(
 
 		@NotBlank
 		String description,
-
-		TicketStatus status,
 
 		@NotNull
 		TicketPriority priority,

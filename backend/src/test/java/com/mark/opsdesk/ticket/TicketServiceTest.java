@@ -69,7 +69,6 @@ class TicketServiceTest {
 		TicketResponse response = ticketService.createTicket(new CreateTicketRequest(
 				"Laptop will not boot",
 				"The laptop hangs on the vendor logo.",
-				null,
 				TicketPriority.HIGH,
 				null
 		));
@@ -77,6 +76,8 @@ class TicketServiceTest {
 		assertThat(response.id()).isEqualTo(42L);
 		assertThat(response.status()).isEqualTo(TicketStatus.OPEN);
 		assertThat(response.createdBy()).isEqualTo("requester");
+		assertThat(response.allowedStatusTransitions())
+				.containsExactly(TicketStatus.IN_PROGRESS, TicketStatus.RESOLVED, TicketStatus.CLOSED);
 
 		ArgumentCaptor<Ticket> ticketCaptor = ArgumentCaptor.forClass(Ticket.class);
 		verify(ticketRepository).save(ticketCaptor.capture());
@@ -92,7 +93,6 @@ class TicketServiceTest {
 		assertThatThrownBy(() -> ticketService.createTicket(new CreateTicketRequest(
 				"Agent created ticket",
 				"Agents are not allowed to create requester tickets.",
-				null,
 				TicketPriority.MEDIUM,
 				null
 		)))

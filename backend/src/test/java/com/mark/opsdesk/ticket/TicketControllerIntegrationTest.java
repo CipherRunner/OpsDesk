@@ -14,6 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -54,7 +55,8 @@ class TicketControllerIntegrationTest extends IntegrationTestBase {
 				.andExpect(jsonPath("$.description").value("The laptop hangs on the vendor logo."))
 				.andExpect(jsonPath("$.status").value("OPEN"))
 				.andExpect(jsonPath("$.priority").value("HIGH"))
-				.andExpect(jsonPath("$.createdBy").value("requester"));
+				.andExpect(jsonPath("$.createdBy").value("requester"))
+				.andExpect(jsonPath("$.allowedStatusTransitions", contains("IN_PROGRESS", "RESOLVED", "CLOSED")));
 
 		assertThat(ticketRepository.findAll())
 				.singleElement()
@@ -63,6 +65,21 @@ class TicketControllerIntegrationTest extends IntegrationTestBase {
 					assertThat(ticket.getCreatedBy()).isEqualTo("requester");
 					assertThat(ticket.getStatus()).isEqualTo(TicketStatus.OPEN);
 				});
+	}
+
+	@Test
+	void statusIsIgnoredOnCreateAndTicketStartsOpen() throws Exception {
+		mockMvc.perform(post("/api/tickets")
+						.header(HttpHeaders.AUTHORIZATION, bearer(requesterToken))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(json(Map.of(
+								"title", "Pre-closed ticket",
+								"description", "Client tries to create a ticket that is already closed.",
+								"priority", "LOW",
+								"status", "CLOSED"
+						))))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.status").value("OPEN"));
 	}
 
 	@Test
@@ -83,7 +100,7 @@ class TicketControllerIntegrationTest extends IntegrationTestBase {
 
 	@Test
 	void agentCanUpdateTicketStatus() throws Exception {
-		long ticketId = createTicket(requesterToken, "VPN access is down", TicketStatus.OPEN);
+		long ticketId = createTicket(requesterToken, "VPN access is down");
 
 		mockMvc.perform(patch("/api/tickets/{id}/status", ticketId)
 						.header(HttpHeaders.AUTHORIZATION, bearer(agentToken))
@@ -91,16 +108,34 @@ class TicketControllerIntegrationTest extends IntegrationTestBase {
 						.content(json(Map.of("status", "IN_PROGRESS"))))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.id").value(ticketId))
-				.andExpect(jsonPath("$.status").value("IN_PROGRESS"));
+				.andExpect(jsonPath("$.status").value("IN_PROGRESS"))
+				.andExpect(jsonPath("$.allowedStatusTransitions", contains("OPEN", "RESOLVED", "CLOSED")));
 
 		Ticket ticket = ticketRepository.findById(ticketId).orElseThrow();
 		assertThat(ticket.getStatus()).isEqualTo(TicketStatus.IN_PROGRESS);
 	}
 
 	@Test
+	void forbiddenStatusTransitionReturnsConflict() throws Exception {
+		long ticketId = createTicket(requesterToken, "Printer jams");
+		setStatus(ticketId, TicketStatus.RESOLVED);
+
+		mockMvc.perform(patch("/api/tickets/{id}/status", ticketId)
+						.header(HttpHeaders.AUTHORIZATION, bearer(agentToken))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(json(Map.of("status", "OPEN"))))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.status").value(409))
+				.andExpect(jsonPath("$.message").value("Cannot change ticket status from RESOLVED to OPEN"));
+
+		assertThat(ticketRepository.findById(ticketId).orElseThrow().getStatus()).isEqualTo(TicketStatus.RESOLVED);
+	}
+
+	@Test
 	void filteringByStatusWorks() throws Exception {
-		createTicket(requesterToken, "Open monitor issue", TicketStatus.OPEN);
-		createTicket(requesterToken, "Resolved printer issue", TicketStatus.RESOLVED);
+		createTicket(requesterToken, "Open monitor issue");
+		long resolvedId = createTicket(requesterToken, "Resolved printer issue");
+		setStatus(resolvedId, TicketStatus.RESOLVED);
 
 		mockMvc.perform(get("/api/tickets")
 						.header(HttpHeaders.AUTHORIZATION, bearer(agentToken))
@@ -111,11 +146,18 @@ class TicketControllerIntegrationTest extends IntegrationTestBase {
 				.andExpect(jsonPath("$.content[0].status").value("RESOLVED"));
 	}
 
-	private long createTicket(String token, String title, TicketStatus status) throws Exception {
+	private void setStatus(long ticketId, TicketStatus status) throws Exception {
+		mockMvc.perform(patch("/api/tickets/{id}/status", ticketId)
+						.header(HttpHeaders.AUTHORIZATION, bearer(agentToken))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(json(Map.of("status", status))))
+				.andExpect(status().isOk());
+	}
+
+	private long createTicket(String token, String title) throws Exception {
 		Map<String, Object> request = new LinkedHashMap<>();
 		request.put("title", title);
 		request.put("description", title + " description");
-		request.put("status", status);
 		request.put("priority", TicketPriority.MEDIUM);
 
 		MvcResult result = mockMvc.perform(post("/api/tickets")

@@ -20,7 +20,6 @@ type TicketDetailProps = {
   onStatusChange: (status: TicketStatus) => Promise<void> | void
 }
 
-const statuses: TicketStatus[] = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']
 const priorities: TicketPriority[] = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
@@ -55,6 +54,10 @@ export function TicketDetail({
   const hasCurrentAssigneeOption = assigneeOptions.some(
     (user) => user.username === ticket.assignedTo,
   )
+  const statusOptions: TicketStatus[] = [
+    ticket.status,
+    ...ticket.allowedStatusTransitions,
+  ]
 
   return (
     <div className="panel ticket-detail">
@@ -80,7 +83,7 @@ export function TicketDetail({
               }
               value={ticket.status}
             >
-              {statuses.map((status) => (
+              {statusOptions.map((status) => (
                 <option key={status} value={status}>
                   {formatOption(status)}
                 </option>

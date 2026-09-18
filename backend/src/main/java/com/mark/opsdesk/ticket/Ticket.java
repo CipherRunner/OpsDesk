@@ -99,8 +99,18 @@ public class Ticket {
 		return status;
 	}
 
-	public void updateStatus(TicketStatus status) {
-		this.status = status;
+	/**
+	 * Moves the ticket along its lifecycle. Setting the current status again is a no-op; a move the
+	 * lifecycle does not allow fails with {@link InvalidTicketTransitionException}.
+	 */
+	public void updateStatus(TicketStatus newStatus) {
+		if (newStatus == this.status) {
+			return;
+		}
+		if (!this.status.canTransitionTo(newStatus)) {
+			throw new InvalidTicketTransitionException(this.status, newStatus);
+		}
+		this.status = newStatus;
 		touch();
 	}
 

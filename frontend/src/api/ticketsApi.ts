@@ -14,6 +14,7 @@ export type Ticket = {
   updatedAt: string
   createdBy: string
   assignedTo: string | null
+  allowedStatusTransitions: TicketStatus[]
 }
 
 export type TicketComment = {
@@ -34,7 +35,6 @@ export type CreateTicketRequest = {
   title: string
   description: string
   priority: TicketPriority
-  status?: TicketStatus
   assignedTo?: string
 }
 

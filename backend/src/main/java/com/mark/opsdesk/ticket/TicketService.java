@@ -13,6 +13,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Objects;
 
 @Service
@@ -39,11 +40,10 @@ public class TicketService {
 	public TicketResponse createTicket(CreateTicketRequest request) {
 		User actor = accessPolicy.requireTicketCreator();
 
-		TicketStatus status = request.status() != null ? request.status() : TicketStatus.OPEN;
 		Ticket ticket = new Ticket(
 				request.title(),
 				request.description(),
-				status,
+				TicketStatus.OPEN,
 				request.priority(),
 				actor.getUsername(),
 				request.assignedTo()
@@ -164,7 +164,8 @@ public class TicketService {
 				ticket.getCreatedAt(),
 				ticket.getUpdatedAt(),
 				ticket.getCreatedBy(),
-				ticket.getAssignedTo()
+				ticket.getAssignedTo(),
+				List.copyOf(ticket.getStatus().allowedTransitions())
 		);
 	}
 }
