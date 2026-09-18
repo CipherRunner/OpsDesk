@@ -3,34 +3,14 @@ import { Link, useNavigate } from 'react-router-dom'
 import { getApiErrorMessage } from '../api/apiError'
 import type { TicketPriority, TicketStatus } from '../api/ticketsApi'
 import { TicketTable } from '../components/tickets/TicketTable'
+import { TICKET_PRIORITIES, TICKET_STATUSES, formatEnumLabel } from '../domain/ticket'
 import { useTickets } from '../queries/tickets'
 
-const statuses: Array<TicketStatus | ''> = [
-  '',
-  'OPEN',
-  'IN_PROGRESS',
-  'RESOLVED',
-  'CLOSED',
-]
+const statuses: Array<TicketStatus | ''> = ['', ...TICKET_STATUSES]
+const priorities: Array<TicketPriority | ''> = ['', ...TICKET_PRIORITIES]
 
-const priorities: Array<TicketPriority | ''> = [
-  '',
-  'LOW',
-  'MEDIUM',
-  'HIGH',
-  'URGENT',
-]
-
-function formatOption(value: string) {
-  if (!value) {
-    return 'All'
-  }
-
-  return value
-    .toLowerCase()
-    .split('_')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ')
+function formatFilterOption(value: string) {
+  return value ? formatEnumLabel(value) : 'All'
 }
 
 export function TicketsPage() {
@@ -70,7 +50,7 @@ export function TicketsPage() {
           >
             {statuses.map((status) => (
               <option key={status || 'all'} value={status}>
-                {formatOption(status)}
+                {formatFilterOption(status)}
               </option>
             ))}
           </select>
@@ -86,7 +66,7 @@ export function TicketsPage() {
           >
             {priorities.map((priority) => (
               <option key={priority || 'all'} value={priority}>
-                {formatOption(priority)}
+                {formatFilterOption(priority)}
               </option>
             ))}
           </select>

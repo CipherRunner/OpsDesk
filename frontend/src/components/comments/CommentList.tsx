@@ -1,16 +1,8 @@
 import type { TicketComment } from '../../api/ticketsApi'
+import { formatDateTime } from '../../domain/dates'
 
 type CommentListProps = {
   comments: TicketComment[]
-}
-
-const dateFormatter = new Intl.DateTimeFormat(undefined, {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-})
-
-function formatDate(value: string) {
-  return dateFormatter.format(new Date(value))
 }
 
 export function CommentList({ comments }: CommentListProps) {
@@ -29,7 +21,7 @@ export function CommentList({ comments }: CommentListProps) {
         <li className="comment-item" key={comment.id}>
           <div className="comment-meta">
             <strong>{comment.authorUsername}</strong>
-            <span>{formatDate(comment.createdAt)}</span>
+            <span>{formatDateTime(comment.createdAt)}</span>
           </div>
           <p>{comment.content}</p>
         </li>

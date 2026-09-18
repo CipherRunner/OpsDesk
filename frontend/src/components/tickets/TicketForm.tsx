@@ -4,21 +4,12 @@ import type {
   CreateTicketRequest,
   TicketPriority,
 } from '../../api/ticketsApi'
+import { TICKET_PRIORITIES, formatEnumLabel } from '../../domain/ticket'
 
 type TicketFormProps = {
   error?: string
   isSubmitting?: boolean
   onSubmit: (request: CreateTicketRequest) => Promise<void> | void
-}
-
-const priorities: TicketPriority[] = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
-
-function formatOption(value: string) {
-  return value
-    .toLowerCase()
-    .split('_')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ')
 }
 
 export function TicketForm({
@@ -77,9 +68,9 @@ export function TicketForm({
           onChange={(event) => setPriority(event.target.value as TicketPriority)}
           value={priority}
         >
-          {priorities.map((option) => (
+          {TICKET_PRIORITIES.map((option) => (
             <option key={option} value={option}>
-              {formatOption(option)}
+              {formatEnumLabel(option)}
             </option>
           ))}
         </select>
