@@ -1,198 +1,85 @@
-import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getApiErrorMessage } from '../api/apiError'
-import {
-  createTicketComment,
-  getTicket,
-  getTicketComments,
-  type Ticket,
-  type TicketComment,
-  type TicketPriority,
-  type TicketStatus,
-  updateTicketAssignee,
-  updateTicketPriority,
-  updateTicketStatus,
-} from '../api/ticketsApi'
-import { getAssignableUsers, type User } from '../api/usersApi'
+import type { TicketPriority, TicketStatus } from '../api/ticketsApi'
 import { useAuth } from '../auth/useAuth'
 import { CommentForm } from '../components/comments/CommentForm'
 import { CommentList } from '../components/comments/CommentList'
 import { TicketDetail } from '../components/tickets/TicketDetail'
+import {
+  useAddComment,
+  useTicket,
+  useTicketComments,
+  useUpdateTicket,
+} from '../queries/tickets'
+import { useAssignableUsers } from '../queries/users'
+
+function parseTicketId(value: string | undefined): number | null {
+  const id = Number(value)
+
+  return Number.isInteger(id) && id > 0 ? id : null
+}
 
 export function TicketDetailPage() {
   const { id } = useParams()
-  const ticketId = Number(id)
-  const hasValidTicketId = Number.isInteger(ticketId) && ticketId > 0
-  const [ticket, setTicket] = useState<Ticket | null>(null)
-  const [comments, setComments] = useState<TicketComment[]>([])
-  const [assigneeOptions, setAssigneeOptions] = useState<User[]>([])
-  const [usersMessage, setUsersMessage] = useState('')
-  const [loadError, setLoadError] = useState('')
-  const [actionError, setActionError] = useState('')
-  const [commentError, setCommentError] = useState('')
-  const [isLoading, setIsLoading] = useState(true)
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
-  const [isUpdatingPriority, setIsUpdatingPriority] = useState(false)
-  const [isUpdatingAssignee, setIsUpdatingAssignee] = useState(false)
-  const [isAddingComment, setIsAddingComment] = useState(false)
-  const { canEditTickets: canEditTicketActions } = useAuth()
+  const ticketId = parseTicketId(id)
+  const { canEditTickets } = useAuth()
 
-  useEffect(() => {
-    let ignore = false
+  const ticketQuery = useTicket(ticketId)
+  const commentsQuery = useTicketComments(ticketId)
+  const usersQuery = useAssignableUsers(canEditTickets && ticketId !== null)
+  const update = useUpdateTicket(ticketId ?? 0)
+  const addComment = useAddComment(ticketId ?? 0)
 
-    async function loadTicket() {
-      if (!hasValidTicketId) {
-        setLoadError('Invalid ticket id.')
-        setIsLoading(false)
-        return
-      }
+  const ticket = ticketQuery.data
+  const isLoading =
+    ticketId !== null && (ticketQuery.isPending || commentsQuery.isPending)
 
-      setIsLoading(true)
-      setLoadError('')
-      setActionError('')
-      setCommentError('')
+  const loadError =
+    ticketId === null
+      ? 'Invalid ticket id.'
+      : ticketQuery.error
+        ? getApiErrorMessage(ticketQuery.error, 'Failed to load ticket.')
+        : commentsQuery.error
+          ? getApiErrorMessage(commentsQuery.error, 'Failed to load comments.')
+          : ''
 
-      try {
-        const [ticketResponse, commentResponse] = await Promise.all([
-          getTicket(ticketId),
-          getTicketComments(ticketId),
-        ])
+  const actionError =
+    update.status.error
+      ? getApiErrorMessage(update.status.error, 'Failed to update status.')
+      : update.priority.error
+        ? getApiErrorMessage(update.priority.error, 'Failed to update priority.')
+        : update.assignee.error
+          ? getApiErrorMessage(update.assignee.error, 'Failed to update assignee.')
+          : ''
 
-        if (!ignore) {
-          setTicket(ticketResponse)
-          setComments(commentResponse)
-        }
-      } catch (requestError) {
-        if (!ignore) {
-          setLoadError(
-            getApiErrorMessage(requestError, 'Failed to load ticket.'),
-          )
-          setTicket(null)
-          setComments([])
-        }
-      } finally {
-        if (!ignore) {
-          setIsLoading(false)
-        }
-      }
+  const usersMessage = usersQuery.error
+    ? `Assignee list unavailable: ${getApiErrorMessage(usersQuery.error, 'Failed to load users.')}`
+    : ''
 
-      if (!canEditTicketActions) {
-        setAssigneeOptions([])
-        setUsersMessage('')
-        return
-      }
-
-      try {
-        const assignableUsers = await getAssignableUsers()
-
-        if (!ignore) {
-          setAssigneeOptions(assignableUsers)
-          setUsersMessage('')
-        }
-      } catch (requestError) {
-        if (!ignore) {
-          setAssigneeOptions([])
-          setUsersMessage(
-            `Assignee list unavailable: ${getApiErrorMessage(
-              requestError,
-              'Failed to load users.',
-            )}`,
-          )
-        }
-      }
-    }
-
-    loadTicket()
-
-    return () => {
-      ignore = true
-    }
-  }, [canEditTicketActions, hasValidTicketId, ticketId])
-
-  async function handleStatusChange(status: TicketStatus) {
-    if (!canEditTicketActions || !ticket || ticket.status === status) {
-      return
-    }
-
-    setActionError('')
-    setIsUpdatingStatus(true)
-
-    try {
-      const updatedTicket = await updateTicketStatus(ticket.id, status)
-      setTicket(updatedTicket)
-    } catch (requestError) {
-      setActionError(
-        getApiErrorMessage(requestError, 'Failed to update status.'),
-      )
-    } finally {
-      setIsUpdatingStatus(false)
+  function handleStatusChange(status: TicketStatus) {
+    if (canEditTickets && ticket && ticket.status !== status) {
+      update.status.mutate(status)
     }
   }
 
-  async function handlePriorityChange(priority: TicketPriority) {
-    if (!canEditTicketActions || !ticket || ticket.priority === priority) {
-      return
-    }
-
-    setActionError('')
-    setIsUpdatingPriority(true)
-
-    try {
-      const updatedTicket = await updateTicketPriority(ticket.id, priority)
-      setTicket(updatedTicket)
-    } catch (requestError) {
-      setActionError(
-        getApiErrorMessage(requestError, 'Failed to update priority.'),
-      )
-    } finally {
-      setIsUpdatingPriority(false)
+  function handlePriorityChange(priority: TicketPriority) {
+    if (canEditTickets && ticket && ticket.priority !== priority) {
+      update.priority.mutate(priority)
     }
   }
 
-  async function handleAssigneeChange(assignedTo: string) {
-    if (
-      !canEditTicketActions ||
-      !ticket ||
-      !assignedTo ||
-      ticket.assignedTo === assignedTo
-    ) {
-      return
-    }
-
-    setActionError('')
-    setIsUpdatingAssignee(true)
-
-    try {
-      const updatedTicket = await updateTicketAssignee(ticket.id, assignedTo)
-      setTicket(updatedTicket)
-    } catch (requestError) {
-      setActionError(
-        getApiErrorMessage(requestError, 'Failed to update assignee.'),
-      )
-    } finally {
-      setIsUpdatingAssignee(false)
+  function handleAssigneeChange(assignedTo: string) {
+    if (canEditTickets && ticket && assignedTo && ticket.assignedTo !== assignedTo) {
+      update.assignee.mutate(assignedTo)
     }
   }
 
   async function handleAddComment(content: string) {
-    if (!ticket) {
-      return false
-    }
-
-    setCommentError('')
-    setIsAddingComment(true)
-
     try {
-      const newComment = await createTicketComment(ticket.id, { content })
-      setComments((currentComments) => [...currentComments, newComment])
+      await addComment.mutateAsync({ content })
       return true
-    } catch (requestError) {
-      setCommentError(
-        getApiErrorMessage(requestError, 'Failed to add comment.'),
-      )
+    } catch {
       return false
-    } finally {
-      setIsAddingComment(false)
     }
   }
 
@@ -218,11 +105,11 @@ export function TicketDetailPage() {
           {actionError ? <p className="form-error">{actionError}</p> : null}
 
           <TicketDetail
-            assigneeOptions={assigneeOptions}
-            canEditTicketActions={canEditTicketActions}
-            isUpdatingAssignee={isUpdatingAssignee}
-            isUpdatingPriority={isUpdatingPriority}
-            isUpdatingStatus={isUpdatingStatus}
+            assigneeOptions={usersQuery.data ?? []}
+            canEditTicketActions={canEditTickets}
+            isUpdatingAssignee={update.assignee.isPending}
+            isUpdatingPriority={update.priority.isPending}
+            isUpdatingStatus={update.status.isPending}
             ticket={ticket}
             usersUnavailableMessage={usersMessage}
             onAssigneeChange={handleAssigneeChange}
@@ -235,10 +122,14 @@ export function TicketDetailPage() {
               <h2>Comments</h2>
             </div>
 
-            <CommentList comments={comments} />
+            <CommentList comments={commentsQuery.data ?? []} />
             <CommentForm
-              error={commentError}
-              isSubmitting={isAddingComment}
+              error={
+                addComment.error
+                  ? getApiErrorMessage(addComment.error, 'Failed to add comment.')
+                  : ''
+              }
+              isSubmitting={addComment.isPending}
               onSubmit={handleAddComment}
             />
           </div>

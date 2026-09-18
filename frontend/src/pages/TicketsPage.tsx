@@ -1,13 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { getApiErrorMessage } from '../api/apiError'
-import {
-  getTickets,
-  type Ticket,
-  type TicketPriority,
-  type TicketStatus,
-} from '../api/ticketsApi'
+import type { TicketPriority, TicketStatus } from '../api/ticketsApi'
 import { TicketTable } from '../components/tickets/TicketTable'
+import { useTickets } from '../queries/tickets'
 
 const statuses: Array<TicketStatus | ''> = [
   '',
@@ -38,49 +34,17 @@ function formatOption(value: string) {
 }
 
 export function TicketsPage() {
-  const [tickets, setTickets] = useState<Ticket[]>([])
   const [statusFilter, setStatusFilter] = useState<TicketStatus | ''>('')
   const [priorityFilter, setPriorityFilter] = useState<TicketPriority | ''>('')
-  const [error, setError] = useState('')
-  const [isLoading, setIsLoading] = useState(true)
   const navigate = useNavigate()
+  const ticketsQuery = useTickets({
+    priority: priorityFilter || undefined,
+    status: statusFilter || undefined,
+  })
 
-  useEffect(() => {
-    let ignore = false
-
-    async function loadTickets() {
-      setIsLoading(true)
-      setError('')
-
-      try {
-        const response = await getTickets({
-          priority: priorityFilter || undefined,
-          status: statusFilter || undefined,
-        })
-
-        if (!ignore) {
-          setTickets(response.content)
-        }
-      } catch (requestError) {
-        if (!ignore) {
-          setError(
-            getApiErrorMessage(requestError, 'Failed to load tickets.'),
-          )
-          setTickets([])
-        }
-      } finally {
-        if (!ignore) {
-          setIsLoading(false)
-        }
-      }
-    }
-
-    loadTickets()
-
-    return () => {
-      ignore = true
-    }
-  }, [priorityFilter, statusFilter])
+  const error = ticketsQuery.error
+    ? getApiErrorMessage(ticketsQuery.error, 'Failed to load tickets.')
+    : ''
 
   return (
     <section className="page">
@@ -131,11 +95,11 @@ export function TicketsPage() {
 
       {error ? <p className="form-error">{error}</p> : null}
 
-      {isLoading ? (
+      {ticketsQuery.isPending ? (
         <div className="panel loading-panel">Loading tickets...</div>
       ) : (
         <TicketTable
-          tickets={tickets}
+          tickets={ticketsQuery.data?.content ?? []}
           onTicketClick={(ticket) => navigate(`/tickets/${ticket.id}`)}
         />
       )}
