@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { removeToken } from '../auth/authStorage'
+import { clearSession } from '../auth/authStorage'
 
 const navItems = [
   { to: '/tickets', label: 'Tickets' },
@@ -9,7 +9,7 @@ export function AppLayout() {
   const navigate = useNavigate()
 
   function handleLogout() {
-    removeToken()
+    clearSession()
     navigate('/login', { replace: true })
   }
 

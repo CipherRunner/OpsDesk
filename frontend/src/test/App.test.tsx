@@ -1,9 +1,9 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '../App'
-import { setCurrentUserRole, setToken } from '../auth/authStorage'
+import { clearSession, setCurrentUserRole, setToken } from '../auth/authStorage'
 import { login } from '../api/authApi'
 import {
   createTicket,
@@ -106,6 +106,19 @@ describe('OpsDesk user flows', () => {
     })
     expect(localStorage.getItem('opsdesk_token')).toBe('session-token')
     expect(await screen.findByRole('heading', { name: 'Tickets' })).toBeInTheDocument()
+  })
+
+  it('returns to the login page when the session is cleared', async () => {
+    signInAs()
+
+    renderApp('/tickets')
+    expect(await screen.findByRole('heading', { name: 'Tickets' })).toBeInTheDocument()
+
+    act(() => {
+      clearSession()
+    })
+
+    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument()
   })
 
   it('renders loaded tickets on the ticket list page', async () => {
