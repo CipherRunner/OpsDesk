@@ -83,7 +83,7 @@ public class TicketAccessPolicy {
 	}
 
 	private boolean canView(AuthenticatedUser user, Ticket ticket) {
-		return !isRequesterScoped(user) || ticket.getCreatedBy().equals(user.username());
+		return !isRequesterScoped(user) || ticket.getCreatedBy().getUsername().equals(user.username());
 	}
 
 	private User loadActor(AuthenticatedUser currentUser) {

@@ -20,6 +20,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -132,6 +133,8 @@ class TicketAccessPolicyTest {
 	}
 
 	private static Ticket ticketCreatedBy(String username) {
-		return Ticket.create("Title", "Description", TicketStatus.OPEN, TicketPriority.LOW, username, null);
+		User creator = mock(User.class);
+		lenient().when(creator.getUsername()).thenReturn(username);
+		return Ticket.create("Title", "Description", TicketStatus.OPEN, TicketPriority.LOW, creator, null);
 	}
 }

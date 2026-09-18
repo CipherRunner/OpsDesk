@@ -1,13 +1,17 @@
 package com.mark.opsdesk.ticket;
 
 import com.mark.opsdesk.common.persistence.AuditableEntity;
+import com.mark.opsdesk.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 @Entity
@@ -32,11 +36,13 @@ public class Ticket extends AuditableEntity {
 	@Column(nullable = false, length = 32)
 	private TicketPriority priority;
 
-	@Column(name = "created_by", nullable = false)
-	private String createdBy;
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "created_by_id", nullable = false, updatable = false)
+	private User createdBy;
 
-	@Column(name = "assigned_to")
-	private String assignedTo;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "assigned_to_id")
+	private User assignedTo;
 
 	protected Ticket() {
 	}
@@ -46,8 +52,8 @@ public class Ticket extends AuditableEntity {
 			String description,
 			TicketStatus status,
 			TicketPriority priority,
-			String createdBy,
-			String assignedTo
+			User createdBy,
+			User assignedTo
 	) {
 		return new Ticket(title, description, status, priority, createdBy, assignedTo);
 	}
@@ -57,8 +63,8 @@ public class Ticket extends AuditableEntity {
 			String description,
 			TicketStatus status,
 			TicketPriority priority,
-			String createdBy,
-			String assignedTo
+			User createdBy,
+			User assignedTo
 	) {
 		this.title = title;
 		this.description = description;
@@ -106,16 +112,15 @@ public class Ticket extends AuditableEntity {
 		this.priority = priority;
 	}
 
-	public String getCreatedBy() {
+	public User getCreatedBy() {
 		return createdBy;
 	}
 
-	public String getAssignedTo() {
+	public User getAssignedTo() {
 		return assignedTo;
 	}
 
-	public void updateAssignee(String assignedTo) {
+	public void updateAssignee(User assignedTo) {
 		this.assignedTo = assignedTo;
 	}
-
 }

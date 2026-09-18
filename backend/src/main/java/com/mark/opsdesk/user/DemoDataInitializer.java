@@ -34,22 +34,19 @@ public class DemoDataInitializer implements ApplicationRunner {
 	@Override
 	@Transactional
 	public void run(ApplicationArguments args) {
-		createUserIfMissing("admin", "admin12345", Role.ADMIN);
-		createUserIfMissing("agent", "agent12345", Role.AGENT);
-		createUserIfMissing("requester", "requester12345", Role.REQUESTER);
-		createUserIfMissing("otherrequester", "otherrequester12345", Role.REQUESTER);
-		createDemoTicketsIfMissing();
+		ensureUser("admin", "admin12345", Role.ADMIN);
+		User agent = ensureUser("agent", "agent12345", Role.AGENT);
+		User requester = ensureUser("requester", "requester12345", Role.REQUESTER);
+		User otherRequester = ensureUser("otherrequester", "otherrequester12345", Role.REQUESTER);
+		createDemoTicketsIfMissing(agent, requester, otherRequester);
 	}
 
-	private void createUserIfMissing(String username, String password, Role role) {
-		if (userRepository.existsByUsername(username)) {
-			return;
-		}
-
-		userRepository.save(new User(username, passwordEncoder.encode(password), role));
+	private User ensureUser(String username, String password, Role role) {
+		return userRepository.findByUsername(username)
+				.orElseGet(() -> userRepository.save(new User(username, passwordEncoder.encode(password), role)));
 	}
 
-	private void createDemoTicketsIfMissing() {
+	private void createDemoTicketsIfMissing(User agent, User requester, User otherRequester) {
 		if (ticketRepository.count() > 0) {
 			return;
 		}
@@ -60,23 +57,23 @@ public class DemoDataInitializer implements ApplicationRunner {
 						"The requester cannot connect to the corporate VPN from home.",
 						TicketStatus.OPEN,
 						TicketPriority.HIGH,
-						"requester",
-						"agent"
+						requester,
+						agent
 				),
 				Ticket.create(
 						"Laptop fan is very loud",
 						"The laptop fan runs loudly during normal office work.",
 						TicketStatus.IN_PROGRESS,
 						TicketPriority.MEDIUM,
-						"requester",
-						"agent"
+						requester,
+						agent
 				),
 				Ticket.create(
 						"Cannot access shared drive",
 						"The shared team drive is not available after signing in.",
 						TicketStatus.OPEN,
 						TicketPriority.MEDIUM,
-						"otherrequester",
+						otherRequester,
 						null
 				),
 				Ticket.create(
@@ -84,16 +81,16 @@ public class DemoDataInitializer implements ApplicationRunner {
 						"The requester needs help resetting their account password.",
 						TicketStatus.RESOLVED,
 						TicketPriority.LOW,
-						"otherrequester",
-						"agent"
+						otherRequester,
+						agent
 				),
 				Ticket.create(
 						"Monitor flickers after login",
 						"The external monitor flickers shortly after login.",
 						TicketStatus.CLOSED,
 						TicketPriority.LOW,
-						"requester",
-						"agent"
+						requester,
+						agent
 				)
 		));
 	}

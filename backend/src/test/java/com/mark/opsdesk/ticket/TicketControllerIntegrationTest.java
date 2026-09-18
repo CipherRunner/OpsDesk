@@ -42,7 +42,7 @@ class TicketControllerIntegrationTest extends IntegrationTestBase {
 
 	@Test
 	void requesterCanCreateTicket() throws Exception {
-		mockMvc.perform(post("/api/tickets")
+		MvcResult result = mockMvc.perform(post("/api/tickets")
 						.header(HttpHeaders.AUTHORIZATION, bearer(requesterToken))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(json(Map.of(
@@ -56,15 +56,43 @@ class TicketControllerIntegrationTest extends IntegrationTestBase {
 				.andExpect(jsonPath("$.status").value("OPEN"))
 				.andExpect(jsonPath("$.priority").value("HIGH"))
 				.andExpect(jsonPath("$.createdBy").value("requester"))
-				.andExpect(jsonPath("$.allowedStatusTransitions", contains("IN_PROGRESS", "RESOLVED", "CLOSED")));
+				.andExpect(jsonPath("$.allowedStatusTransitions", contains("IN_PROGRESS", "RESOLVED", "CLOSED")))
+				.andReturn();
 
-		assertThat(ticketRepository.findAll())
-				.singleElement()
-				.satisfies(ticket -> {
-					assertThat(ticket.getTitle()).isEqualTo("Laptop will not boot");
-					assertThat(ticket.getCreatedBy()).isEqualTo("requester");
-					assertThat(ticket.getStatus()).isEqualTo(TicketStatus.OPEN);
-				});
+		long ticketId = objectMapper.readTree(result.getResponse().getContentAsString()).path("id").asLong();
+		Ticket ticket = ticketRepository.findById(ticketId).orElseThrow();
+		assertThat(ticket.getTitle()).isEqualTo("Laptop will not boot");
+		assertThat(ticket.getCreatedBy().getUsername()).isEqualTo("requester");
+		assertThat(ticket.getAssignedTo()).isNull();
+		assertThat(ticket.getStatus()).isEqualTo(TicketStatus.OPEN);
+	}
+
+	@Test
+	void agentCanAssignTicketToAgentButNotToRequester() throws Exception {
+		long ticketId = createTicket(requesterToken, "Assign me");
+
+		mockMvc.perform(patch("/api/tickets/{id}/assignee", ticketId)
+						.header(HttpHeaders.AUTHORIZATION, bearer(agentToken))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(json(Map.of("assignedTo", "agent"))))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.assignedTo").value("agent"));
+
+		mockMvc.perform(patch("/api/tickets/{id}/assignee", ticketId)
+						.header(HttpHeaders.AUTHORIZATION, bearer(agentToken))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(json(Map.of("assignedTo", "requester"))))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.message").value("Assignee 'requester' must be an admin or agent"));
+
+		mockMvc.perform(patch("/api/tickets/{id}/assignee", ticketId)
+						.header(HttpHeaders.AUTHORIZATION, bearer(agentToken))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(json(Map.of("assignedTo", "nobody"))))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.message").value("Assignee 'nobody' does not exist"));
+
+		assertThat(ticketRepository.findById(ticketId).orElseThrow().getAssignedTo().getUsername()).isEqualTo("agent");
 	}
 
 	@Test

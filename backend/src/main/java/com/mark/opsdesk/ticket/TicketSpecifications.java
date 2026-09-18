@@ -21,6 +21,6 @@ final class TicketSpecifications {
 	}
 
 	static Specification<Ticket> createdBy(String username) {
-		return username == null ? null : (root, query, cb) -> cb.equal(root.get("createdBy"), username);
+		return username == null ? null : (root, query, cb) -> cb.equal(root.get("createdBy").get("username"), username);
 	}
 }
