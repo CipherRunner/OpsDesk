@@ -1,6 +1,7 @@
 package com.mark.opsdesk.ticket;
 
 import com.mark.opsdesk.user.User;
+import com.mark.opsdesk.common.persistence.TimestampedEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -11,14 +12,11 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-
-import java.time.Instant;
 
 @Entity
 @Table(name = "ticket_audit_entries")
-public class TicketAuditEntry {
+public class TicketAuditEntry extends TimestampedEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -42,9 +40,6 @@ public class TicketAuditEntry {
 	@Column(name = "new_value")
 	private String newValue;
 
-	@Column(name = "created_at", nullable = false, updatable = false)
-	private Instant createdAt;
-
 	protected TicketAuditEntry() {
 	}
 
@@ -60,11 +55,6 @@ public class TicketAuditEntry {
 		this.action = action;
 		this.oldValue = oldValue;
 		this.newValue = newValue;
-	}
-
-	@PrePersist
-	void onCreate() {
-		this.createdAt = Instant.now();
 	}
 
 	public Long getId() {
@@ -89,9 +79,5 @@ public class TicketAuditEntry {
 
 	public String getNewValue() {
 		return newValue;
-	}
-
-	public Instant getCreatedAt() {
-		return createdAt;
 	}
 }

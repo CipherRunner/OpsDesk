@@ -1,5 +1,6 @@
 package com.mark.opsdesk.user;
 
+import com.mark.opsdesk.common.persistence.AuditableEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -7,15 +8,11 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-
-import java.time.Instant;
 
 @Entity
 @Table(name = "users")
-public class User {
+public class User extends AuditableEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,12 +28,6 @@ public class User {
 	@Column(nullable = false, length = 32)
 	private Role role;
 
-	@Column(name = "created_at", nullable = false, updatable = false)
-	private Instant createdAt;
-
-	@Column(name = "updated_at", nullable = false)
-	private Instant updatedAt;
-
 	protected User() {
 	}
 
@@ -44,18 +35,6 @@ public class User {
 		this.username = username;
 		this.passwordHash = passwordHash;
 		this.role = role;
-	}
-
-	@PrePersist
-	void onCreate() {
-		Instant now = Instant.now();
-		this.createdAt = now;
-		this.updatedAt = now;
-	}
-
-	@PreUpdate
-	void onUpdate() {
-		this.updatedAt = Instant.now();
 	}
 
 	public Long getId() {
@@ -72,13 +51,5 @@ public class User {
 
 	public Role getRole() {
 		return role;
-	}
-
-	public Instant getCreatedAt() {
-		return createdAt;
-	}
-
-	public Instant getUpdatedAt() {
-		return updatedAt;
 	}
 }

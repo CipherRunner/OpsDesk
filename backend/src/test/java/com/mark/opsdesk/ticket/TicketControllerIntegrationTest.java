@@ -113,6 +113,8 @@ class TicketControllerIntegrationTest extends IntegrationTestBase {
 
 		Ticket ticket = ticketRepository.findById(ticketId).orElseThrow();
 		assertThat(ticket.getStatus()).isEqualTo(TicketStatus.IN_PROGRESS);
+		assertThat(ticket.getCreatedAt()).isNotNull();
+		assertThat(ticket.getUpdatedAt()).isAfter(ticket.getCreatedAt());
 	}
 
 	@Test

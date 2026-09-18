@@ -1,5 +1,6 @@
 package com.mark.opsdesk.ticket;
 
+import com.mark.opsdesk.common.persistence.AuditableEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -7,14 +8,11 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-
-import java.time.Instant;
 
 @Entity
 @Table(name = "tickets")
-public class Ticket {
+public class Ticket extends AuditableEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,12 +31,6 @@ public class Ticket {
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 32)
 	private TicketPriority priority;
-
-	@Column(name = "created_at", nullable = false, updatable = false)
-	private Instant createdAt;
-
-	@Column(name = "updated_at", nullable = false)
-	private Instant updatedAt;
 
 	@Column(name = "created_by", nullable = false)
 	private String createdBy;
@@ -76,13 +68,6 @@ public class Ticket {
 		this.assignedTo = assignedTo;
 	}
 
-	@PrePersist
-	void onCreate() {
-		Instant now = Instant.now();
-		this.createdAt = now;
-		this.updatedAt = now;
-	}
-
 	public Long getId() {
 		return id;
 	}
@@ -111,7 +96,6 @@ public class Ticket {
 			throw new InvalidTicketTransitionException(this.status, newStatus);
 		}
 		this.status = newStatus;
-		touch();
 	}
 
 	public TicketPriority getPriority() {
@@ -120,15 +104,6 @@ public class Ticket {
 
 	public void updatePriority(TicketPriority priority) {
 		this.priority = priority;
-		touch();
-	}
-
-	public Instant getCreatedAt() {
-		return createdAt;
-	}
-
-	public Instant getUpdatedAt() {
-		return updatedAt;
 	}
 
 	public String getCreatedBy() {
@@ -141,10 +116,6 @@ public class Ticket {
 
 	public void updateAssignee(String assignedTo) {
 		this.assignedTo = assignedTo;
-		touch();
 	}
 
-	private void touch() {
-		this.updatedAt = Instant.now();
-	}
 }

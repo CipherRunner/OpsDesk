@@ -97,6 +97,7 @@ public class TicketService {
 					request.status().name()
 			);
 		}
+		ticketRepository.flush();
 		return toResponse(ticket);
 	}
 
@@ -115,6 +116,7 @@ public class TicketService {
 					request.assignedTo()
 			);
 		}
+		ticketRepository.flush();
 		return toResponse(ticket);
 	}
 
@@ -133,6 +135,7 @@ public class TicketService {
 					request.priority().name()
 			);
 		}
+		ticketRepository.flush();
 		return toResponse(ticket);
 	}
 
