@@ -38,7 +38,7 @@ export function AppLayout() {
 
         {user ? (
           <p className="helper-text sidebar-user">
-            {user.username} · {user.role.toLowerCase()}
+            {user.username} Â· {user.role.toLowerCase()}
           </p>
         ) : null}
 
