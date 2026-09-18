@@ -3,6 +3,7 @@ import {
   createTicket,
   createTicketComment,
   getTicket,
+  getTicketAudit,
   getTicketComments,
   getTickets,
   updateTicketAssignee,
@@ -27,6 +28,7 @@ export const ticketKeys = {
   list: (filters: TicketFilters) => [...ticketKeys.lists(), filters] as const,
   detail: (id: number) => [...ticketKeys.all, 'detail', id] as const,
   comments: (id: number) => [...ticketKeys.detail(id), 'comments'] as const,
+  audit: (id: number) => [...ticketKeys.detail(id), 'audit'] as const,
 }
 
 export function useTickets(filters: TicketFilters) {
@@ -48,6 +50,14 @@ export function useTicketComments(id: number | null) {
   return useQuery({
     queryKey: ticketKeys.comments(id ?? 0),
     queryFn: () => getTicketComments(id as number),
+    enabled: id !== null,
+  })
+}
+
+export function useTicketAudit(id: number | null) {
+  return useQuery({
+    queryKey: ticketKeys.audit(id ?? 0),
+    queryFn: () => getTicketAudit(id as number),
     enabled: id !== null,
   })
 }
@@ -74,6 +84,7 @@ export function useUpdateTicket(id: number) {
   function onSuccess(ticket: Ticket) {
     queryClient.setQueryData(ticketKeys.detail(id), ticket)
     void queryClient.invalidateQueries({ queryKey: ticketKeys.lists() })
+    void queryClient.invalidateQueries({ queryKey: ticketKeys.audit(id) })
   }
 
   const status = useMutation({
@@ -102,6 +113,7 @@ export function useAddComment(id: number) {
         ...comments,
         comment,
       ])
+      void queryClient.invalidateQueries({ queryKey: ticketKeys.audit(id) })
     },
   })
 }

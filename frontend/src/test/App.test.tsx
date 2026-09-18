@@ -10,6 +10,7 @@ import { getCurrentUser, login, type CurrentUserRole } from '../api/authApi'
 import {
   createTicket,
   getTicket,
+  getTicketAudit,
   getTicketComments,
   getTickets,
   type Ticket,
@@ -26,6 +27,7 @@ vi.mock('../api/ticketsApi', () => ({
   createTicket: vi.fn(),
   createTicketComment: vi.fn(),
   getTicket: vi.fn(),
+  getTicketAudit: vi.fn(),
   getTicketComments: vi.fn(),
   getTickets: vi.fn(),
   updateTicketAssignee: vi.fn(),
@@ -42,6 +44,7 @@ const mockGetCurrentUser = vi.mocked(getCurrentUser)
 const mockCreateTicket = vi.mocked(createTicket)
 const mockGetTicket = vi.mocked(getTicket)
 const mockGetTicketComments = vi.mocked(getTicketComments)
+const mockGetTicketAudit = vi.mocked(getTicketAudit)
 const mockGetTickets = vi.mocked(getTickets)
 const mockGetAssignableUsers = vi.mocked(getAssignableUsers)
 
@@ -94,6 +97,7 @@ beforeEach(() => {
   })
   mockGetTicket.mockResolvedValue(baseTicket)
   mockGetTicketComments.mockResolvedValue([])
+  mockGetTicketAudit.mockResolvedValue([])
   mockGetAssignableUsers.mockResolvedValue([])
 })
 
@@ -285,6 +289,28 @@ describe('OpsDesk user flows', () => {
     signInAs()
     mockGetTicket.mockResolvedValue(baseTicket)
     mockGetTicketComments.mockResolvedValue(comments)
+    mockGetTicketAudit.mockResolvedValue([
+      {
+        id: 1,
+        ticketId: baseTicket.id,
+        actorId: 3,
+        actorUsername: 'alice',
+        action: 'TICKET_CREATED',
+        oldValue: null,
+        newValue: null,
+        createdAt: '2026-06-20T09:15:00Z',
+      },
+      {
+        id: 2,
+        ticketId: baseTicket.id,
+        actorId: 2,
+        actorUsername: 'agent.smith',
+        action: 'STATUS_CHANGED',
+        oldValue: 'OPEN',
+        newValue: 'IN_PROGRESS',
+        createdAt: '2026-06-21T10:30:00Z',
+      },
+    ])
 
     renderApp('/tickets/7')
 
@@ -307,5 +333,8 @@ describe('OpsDesk user flows', () => {
     expect(within(detailPanel as HTMLElement).getByText('Updated')).toBeInTheDocument()
     expect(mockGetTicket).toHaveBeenCalledWith(7)
     expect(mockGetTicketComments).toHaveBeenCalledWith(7)
+    expect(await screen.findByText(/created the ticket/i)).toBeInTheDocument()
+    expect(screen.getByText(/changed status from Open to In progress/i)).toBeInTheDocument()
+    expect(mockGetTicketAudit).toHaveBeenCalledWith(7)
   })
 })

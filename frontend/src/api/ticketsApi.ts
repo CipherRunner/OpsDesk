@@ -26,6 +26,24 @@ export type TicketComment = {
   createdAt: string
 }
 
+export type TicketAuditAction =
+  | 'TICKET_CREATED'
+  | 'STATUS_CHANGED'
+  | 'ASSIGNEE_CHANGED'
+  | 'PRIORITY_CHANGED'
+  | 'COMMENT_ADDED'
+
+export type TicketAuditEntry = {
+  id: number
+  ticketId: number
+  actorId: number
+  actorUsername: string
+  action: TicketAuditAction
+  oldValue: string | null
+  newValue: string | null
+  createdAt: string
+}
+
 export type TicketFilters = {
   status?: TicketStatus
   priority?: TicketPriority
@@ -102,6 +120,12 @@ export async function getTicketComments(ticketId: number) {
   const response = await http.get<TicketComment[]>(
     `/tickets/${ticketId}/comments`,
   )
+
+  return response.data
+}
+
+export async function getTicketAudit(ticketId: number) {
+  const response = await http.get<TicketAuditEntry[]>(`/tickets/${ticketId}/audit`)
 
   return response.data
 }

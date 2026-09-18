@@ -4,10 +4,12 @@ import type { TicketPriority, TicketStatus } from '../api/ticketsApi'
 import { useAuth } from '../auth/useAuth'
 import { CommentForm } from '../components/comments/CommentForm'
 import { CommentList } from '../components/comments/CommentList'
+import { AuditList } from '../components/tickets/AuditList'
 import { TicketDetail } from '../components/tickets/TicketDetail'
 import {
   useAddComment,
   useTicket,
+  useTicketAudit,
   useTicketComments,
   useUpdateTicket,
 } from '../queries/tickets'
@@ -26,6 +28,7 @@ export function TicketDetailPage() {
 
   const ticketQuery = useTicket(ticketId)
   const commentsQuery = useTicketComments(ticketId)
+  const auditQuery = useTicketAudit(ticketId)
   const usersQuery = useAssignableUsers(canEditTickets && ticketId !== null)
   const update = useUpdateTicket(ticketId ?? 0)
   const addComment = useAddComment(ticketId ?? 0)
@@ -132,6 +135,20 @@ export function TicketDetailPage() {
               isSubmitting={addComment.isPending}
               onSubmit={handleAddComment}
             />
+          </div>
+
+          <div className="panel comments-panel">
+            <div className="panel-heading">
+              <h2>History</h2>
+            </div>
+
+            {auditQuery.error ? (
+              <p className="form-error">
+                {getApiErrorMessage(auditQuery.error, 'Failed to load history.')}
+              </p>
+            ) : (
+              <AuditList entries={auditQuery.data ?? []} />
+            )}
           </div>
         </>
       ) : null}
