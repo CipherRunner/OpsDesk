@@ -37,6 +37,14 @@ public class UserService {
 				.toList();
 	}
 
+	@Transactional(readOnly = true)
+	public List<UserResponse> getAssignableUsers() {
+		return userRepository.findByRoleInOrderByUsernameAsc(List.of(Role.ADMIN, Role.AGENT))
+				.stream()
+				.map(this::toResponse)
+				.toList();
+	}
+
 	@Transactional
 	public UserResponse createUser(CreateUserRequest request) {
 		boolean hasUsers = userRepository.count() > 0;

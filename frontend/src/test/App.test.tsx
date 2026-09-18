@@ -13,7 +13,7 @@ import {
   type Ticket,
   type TicketComment,
 } from '../api/ticketsApi'
-import { getUsers } from '../api/usersApi'
+import { getAssignableUsers } from '../api/usersApi'
 
 vi.mock('../api/authApi', () => ({
   login: vi.fn(),
@@ -31,7 +31,7 @@ vi.mock('../api/ticketsApi', () => ({
 }))
 
 vi.mock('../api/usersApi', () => ({
-  getUsers: vi.fn(),
+  getAssignableUsers: vi.fn(),
 }))
 
 const mockLogin = vi.mocked(login)
@@ -39,7 +39,7 @@ const mockCreateTicket = vi.mocked(createTicket)
 const mockGetTicket = vi.mocked(getTicket)
 const mockGetTicketComments = vi.mocked(getTicketComments)
 const mockGetTickets = vi.mocked(getTickets)
-const mockGetUsers = vi.mocked(getUsers)
+const mockGetAssignableUsers = vi.mocked(getAssignableUsers)
 
 const baseTicket: Ticket = {
   id: 7,
@@ -78,7 +78,7 @@ beforeEach(() => {
   })
   mockGetTicket.mockResolvedValue(baseTicket)
   mockGetTicketComments.mockResolvedValue([])
-  mockGetUsers.mockResolvedValue([])
+  mockGetAssignableUsers.mockResolvedValue([])
 })
 
 describe('OpsDesk user flows', () => {

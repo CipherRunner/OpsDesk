@@ -15,3 +15,9 @@ export async function getUsers() {
 
   return response.data
 }
+
+export async function getAssignableUsers() {
+  const response = await http.get<User[]>('/users/assignable')
+
+  return response.data
+}

@@ -13,7 +13,7 @@ import {
   updateTicketPriority,
   updateTicketStatus,
 } from '../api/ticketsApi'
-import { getUsers, type User } from '../api/usersApi'
+import { getAssignableUsers, type User } from '../api/usersApi'
 import { canEditTickets } from '../auth/authStorage'
 import { CommentForm } from '../components/comments/CommentForm'
 import { CommentList } from '../components/comments/CommentList'
@@ -83,10 +83,7 @@ export function TicketDetailPage() {
       }
 
       try {
-        const users = await getUsers()
-        const assignableUsers = users.filter(
-          (user) => user.role === 'ADMIN' || user.role === 'AGENT',
-        )
+        const assignableUsers = await getAssignableUsers()
 
         if (!ignore) {
           setAssigneeOptions(assignableUsers)
