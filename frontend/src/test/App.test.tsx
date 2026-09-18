@@ -165,6 +165,8 @@ describe('OpsDesk user flows', () => {
     expect(mockGetTickets).toHaveBeenCalledWith({
       priority: undefined,
       status: undefined,
+      page: 0,
+      size: 20,
     })
   })
 
@@ -180,6 +182,8 @@ describe('OpsDesk user flows', () => {
     expect(mockGetTickets).toHaveBeenCalledWith({
       priority: undefined,
       status: 'RESOLVED',
+      page: 0,
+      size: 20,
     })
 
     await user.selectOptions(screen.getByLabelText(/priority/i), 'HIGH')
@@ -187,6 +191,43 @@ describe('OpsDesk user flows', () => {
     expect(mockGetTickets).toHaveBeenLastCalledWith({
       priority: 'HIGH',
       status: 'RESOLVED',
+      page: 0,
+      size: 20,
+    })
+  })
+
+  it('pages through the queue and resets to the first page on filter change', async () => {
+    const user = userEvent.setup()
+    signInAs()
+    mockGetTickets.mockResolvedValue({
+      content: [baseTicket],
+      page: 0,
+      size: 20,
+      totalElements: 45,
+      totalPages: 3,
+    })
+
+    renderApp('/tickets')
+
+    expect(await screen.findByText(/page 1 of 3/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /previous/i })).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: /next/i }))
+
+    expect(mockGetTickets).toHaveBeenLastCalledWith({
+      priority: undefined,
+      status: undefined,
+      page: 1,
+      size: 20,
+    })
+
+    await user.selectOptions(screen.getByLabelText(/status/i), 'OPEN')
+
+    expect(mockGetTickets).toHaveBeenLastCalledWith({
+      priority: undefined,
+      status: 'OPEN',
+      page: 0,
+      size: 20,
     })
   })
 

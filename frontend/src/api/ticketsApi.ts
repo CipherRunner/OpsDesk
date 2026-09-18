@@ -29,6 +29,9 @@ export type TicketComment = {
 export type TicketFilters = {
   status?: TicketStatus
   priority?: TicketPriority
+  /** Zero-based page index. */
+  page?: number
+  size?: number
 }
 
 export type CreateTicketRequest = {
