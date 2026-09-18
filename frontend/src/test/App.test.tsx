@@ -168,6 +168,28 @@ describe('OpsDesk user flows', () => {
     })
   })
 
+  it('reads list filters from the URL and writes changes back', async () => {
+    const user = userEvent.setup()
+    signInAs()
+
+    renderApp('/tickets?status=RESOLVED&priority=BOGUS')
+
+    expect(await screen.findByRole('heading', { name: 'Tickets' })).toBeInTheDocument()
+    expect(screen.getByLabelText(/status/i)).toHaveValue('RESOLVED')
+    expect(screen.getByLabelText(/priority/i)).toHaveValue('')
+    expect(mockGetTickets).toHaveBeenCalledWith({
+      priority: undefined,
+      status: 'RESOLVED',
+    })
+
+    await user.selectOptions(screen.getByLabelText(/priority/i), 'HIGH')
+
+    expect(mockGetTickets).toHaveBeenLastCalledWith({
+      priority: 'HIGH',
+      status: 'RESOLVED',
+    })
+  })
+
   it('allows creating a ticket from the new ticket form', async () => {
     const user = userEvent.setup()
     const createdTicket: Ticket = {

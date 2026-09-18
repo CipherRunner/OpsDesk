@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { getApiErrorMessage } from '../api/apiError'
 import type { TicketPriority, TicketStatus } from '../api/ticketsApi'
 import { TicketTable } from '../components/tickets/TicketTable'
@@ -13,14 +12,46 @@ function formatFilterOption(value: string) {
   return value ? formatEnumLabel(value) : 'All'
 }
 
+function readStatus(value: string | null): TicketStatus | '' {
+  return TICKET_STATUSES.includes(value as TicketStatus) ? (value as TicketStatus) : ''
+}
+
+function readPriority(value: string | null): TicketPriority | '' {
+  return TICKET_PRIORITIES.includes(value as TicketPriority) ? (value as TicketPriority) : ''
+}
+
+/**
+ * Filters live in the query string so a filtered queue survives reload and can be shared.
+ * Unknown values are treated as "All" rather than sent to the API.
+ */
 export function TicketsPage() {
-  const [statusFilter, setStatusFilter] = useState<TicketStatus | ''>('')
-  const [priorityFilter, setPriorityFilter] = useState<TicketPriority | ''>('')
+  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
+
+  const statusFilter = readStatus(searchParams.get('status'))
+  const priorityFilter = readPriority(searchParams.get('priority'))
+
   const ticketsQuery = useTickets({
     priority: priorityFilter || undefined,
     status: statusFilter || undefined,
   })
+
+  function updateFilter(name: 'status' | 'priority', value: string) {
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+
+        if (value) {
+          next.set(name, value)
+        } else {
+          next.delete(name)
+        }
+
+        return next
+      },
+      { replace: true },
+    )
+  }
 
   const error = ticketsQuery.error
     ? getApiErrorMessage(ticketsQuery.error, 'Failed to load tickets.')
@@ -43,9 +74,7 @@ export function TicketsPage() {
         <label className="field compact-field">
           Status
           <select
-            onChange={(event) =>
-              setStatusFilter(event.target.value as TicketStatus | '')
-            }
+            onChange={(event) => updateFilter('status', event.target.value)}
             value={statusFilter}
           >
             {statuses.map((status) => (
@@ -59,9 +88,7 @@ export function TicketsPage() {
         <label className="field compact-field">
           Priority
           <select
-            onChange={(event) =>
-              setPriorityFilter(event.target.value as TicketPriority | '')
-            }
+            onChange={(event) => updateFilter('priority', event.target.value)}
             value={priorityFilter}
           >
             {priorities.map((priority) => (
