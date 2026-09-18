@@ -173,7 +173,11 @@ class TicketControllerIntegrationTest extends IntegrationTestBase {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.content", hasSize(1)))
 				.andExpect(jsonPath("$.content[0].title").value("Resolved printer issue"))
-				.andExpect(jsonPath("$.content[0].status").value("RESOLVED"));
+				.andExpect(jsonPath("$.content[0].status").value("RESOLVED"))
+				.andExpect(jsonPath("$.page").value(0))
+				.andExpect(jsonPath("$.size").value(20))
+				.andExpect(jsonPath("$.totalElements").value(1))
+				.andExpect(jsonPath("$.totalPages").value(1));
 	}
 
 	@Test

@@ -72,7 +72,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockGetTickets.mockResolvedValue({
     content: [],
-    number: 0,
+    page: 0,
     size: 20,
     totalElements: 0,
     totalPages: 0,
@@ -122,7 +122,7 @@ describe('OpsDesk user flows', () => {
           assignedTo: null,
         },
       ],
-      number: 0,
+      page: 0,
       size: 20,
       totalElements: 2,
       totalPages: 1,

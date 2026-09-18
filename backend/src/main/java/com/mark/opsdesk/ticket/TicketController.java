@@ -1,5 +1,6 @@
 package com.mark.opsdesk.ticket;
 
+import com.mark.opsdesk.common.api.PageResponse;
 import com.mark.opsdesk.ticket.dto.CreateTicketRequest;
 import com.mark.opsdesk.ticket.dto.CreateTicketCommentRequest;
 import com.mark.opsdesk.ticket.dto.TicketAuditEntryResponse;
@@ -9,7 +10,6 @@ import com.mark.opsdesk.ticket.dto.UpdateTicketAssigneeRequest;
 import com.mark.opsdesk.ticket.dto.UpdateTicketPriorityRequest;
 import com.mark.opsdesk.ticket.dto.UpdateTicketStatusRequest;
 import jakarta.validation.Valid;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -50,12 +50,12 @@ public class TicketController {
 	}
 
 	@GetMapping
-	public Page<TicketResponse> getTickets(
+	public PageResponse<TicketResponse> getTickets(
 			@RequestParam(required = false) TicketStatus status,
 			@RequestParam(required = false) TicketPriority priority,
 			@PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
 	) {
-		return ticketService.getTickets(status, priority, pageable);
+		return PageResponse.from(ticketService.getTickets(status, priority, pageable));
 	}
 
 	@GetMapping("/{id}")

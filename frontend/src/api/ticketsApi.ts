@@ -42,12 +42,12 @@ export type CreateTicketCommentRequest = {
   content: string
 }
 
-type PageResponse<T> = {
+export type PageResponse<T> = {
   content: T[]
+  page: number
+  size: number
   totalElements: number
   totalPages: number
-  number: number
-  size: number
 }
 
 export async function getTickets(filters: TicketFilters = {}) {
