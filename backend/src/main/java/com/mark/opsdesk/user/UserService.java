@@ -60,7 +60,7 @@ public class UserService {
 			throw new ConflictException("Username already exists");
 		}
 
-		User user = new User(
+		User user = User.create(
 				username,
 				passwordEncoder.encode(request.password()),
 				request.role()

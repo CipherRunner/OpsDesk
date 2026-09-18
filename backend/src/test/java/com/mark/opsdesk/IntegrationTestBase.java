@@ -23,7 +23,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.lang.reflect.Constructor;
 import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -80,8 +79,7 @@ public abstract class IntegrationTestBase {
 	}
 
 	protected User createTestUser(String username, Role role) {
-		User user = newTestUser(username, passwordEncoder.encode(TEST_PASSWORD), role);
-		return userRepository.save(user);
+		return userRepository.save(User.create(username, passwordEncoder.encode(TEST_PASSWORD), role));
 	}
 
 	protected String login(String username) throws Exception {
@@ -103,15 +101,5 @@ public abstract class IntegrationTestBase {
 
 	protected String json(Object value) throws JsonProcessingException {
 		return objectMapper.writeValueAsString(value);
-	}
-
-	private User newTestUser(String username, String passwordHash, Role role) {
-		try {
-			Constructor<User> constructor = User.class.getDeclaredConstructor(String.class, String.class, Role.class);
-			constructor.setAccessible(true);
-			return constructor.newInstance(username, passwordHash, role);
-		} catch (ReflectiveOperationException exception) {
-			throw new IllegalStateException("Unable to create test user", exception);
-		}
 	}
 }

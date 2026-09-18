@@ -31,6 +31,10 @@ public class User extends AuditableEntity {
 	protected User() {
 	}
 
+	public static User create(String username, String passwordHash, Role role) {
+		return new User(username, passwordHash, role);
+	}
+
 	User(String username, String passwordHash, Role role) {
 		this.username = username;
 		this.passwordHash = passwordHash;

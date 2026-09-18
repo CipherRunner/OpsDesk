@@ -1,9 +1,12 @@
-package com.mark.opsdesk.user;
+package com.mark.opsdesk.demo;
 
 import com.mark.opsdesk.ticket.Ticket;
 import com.mark.opsdesk.ticket.TicketPriority;
 import com.mark.opsdesk.ticket.TicketRepository;
 import com.mark.opsdesk.ticket.TicketStatus;
+import com.mark.opsdesk.user.Role;
+import com.mark.opsdesk.user.User;
+import com.mark.opsdesk.user.UserRepository;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -13,6 +16,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+/**
+ * Seeds demo accounts and tickets when {@code opsdesk.demo-data.enabled=true}. Lives outside the
+ * user and ticket modules because it depends on both.
+ */
 @Component
 @ConditionalOnProperty(prefix = "opsdesk.demo-data", name = "enabled", havingValue = "true")
 public class DemoDataInitializer implements ApplicationRunner {
@@ -43,7 +50,7 @@ public class DemoDataInitializer implements ApplicationRunner {
 
 	private User ensureUser(String username, String password, Role role) {
 		return userRepository.findByUsername(username)
-				.orElseGet(() -> userRepository.save(new User(username, passwordEncoder.encode(password), role)));
+				.orElseGet(() -> userRepository.save(User.create(username, passwordEncoder.encode(password), role)));
 	}
 
 	private void createDemoTicketsIfMissing(User agent, User requester, User otherRequester) {
