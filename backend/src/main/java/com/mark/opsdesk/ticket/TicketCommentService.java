@@ -1,14 +1,8 @@
 package com.mark.opsdesk.ticket;
 
-import com.mark.opsdesk.common.exception.NotFoundException;
-import com.mark.opsdesk.common.exception.UnauthorizedException;
-import com.mark.opsdesk.security.AuthenticatedUser;
-import com.mark.opsdesk.security.CurrentUserService;
 import com.mark.opsdesk.ticket.dto.CreateTicketCommentRequest;
 import com.mark.opsdesk.ticket.dto.TicketCommentResponse;
-import com.mark.opsdesk.user.Role;
 import com.mark.opsdesk.user.User;
-import com.mark.opsdesk.user.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,31 +12,23 @@ import java.util.List;
 public class TicketCommentService {
 
 	private final TicketCommentRepository commentRepository;
-	private final TicketRepository ticketRepository;
-	private final UserRepository userRepository;
-	private final CurrentUserService currentUserService;
+	private final TicketAccessPolicy accessPolicy;
 	private final TicketAuditService ticketAuditService;
 
 	public TicketCommentService(
 			TicketCommentRepository commentRepository,
-			TicketRepository ticketRepository,
-			UserRepository userRepository,
-			CurrentUserService currentUserService,
+			TicketAccessPolicy accessPolicy,
 			TicketAuditService ticketAuditService
 	) {
 		this.commentRepository = commentRepository;
-		this.ticketRepository = ticketRepository;
-		this.userRepository = userRepository;
-		this.currentUserService = currentUserService;
+		this.accessPolicy = accessPolicy;
 		this.ticketAuditService = ticketAuditService;
 	}
 
 	@Transactional
 	public TicketCommentResponse addComment(Long ticketId, CreateTicketCommentRequest request) {
-		AuthenticatedUser currentUser = currentUserService.requireCurrentUser();
-		Ticket ticket = findTicket(ticketId);
-		ensureCanView(ticket, currentUser);
-		User author = findUser(currentUser.username());
+		Ticket ticket = accessPolicy.requireViewableTicket(ticketId);
+		User author = accessPolicy.requireActor();
 
 		TicketComment comment = commentRepository.save(new TicketComment(ticket, author, request.content()));
 		ticketAuditService.record(ticket, author, TicketAuditAction.COMMENT_ADDED, null, null);
@@ -52,30 +38,12 @@ public class TicketCommentService {
 
 	@Transactional(readOnly = true)
 	public List<TicketCommentResponse> getComments(Long ticketId) {
-		AuthenticatedUser currentUser = currentUserService.requireCurrentUser();
-		Ticket ticket = findTicket(ticketId);
-		ensureCanView(ticket, currentUser);
+		Ticket ticket = accessPolicy.requireViewableTicket(ticketId);
 
 		return commentRepository.findByTicketIdOrderByCreatedAtAscIdAsc(ticket.getId())
 				.stream()
 				.map(this::toResponse)
 				.toList();
-	}
-
-	private Ticket findTicket(Long id) {
-		return ticketRepository.findById(id)
-				.orElseThrow(() -> new NotFoundException("Ticket not found"));
-	}
-
-	private User findUser(String username) {
-		return userRepository.findByUsername(username)
-				.orElseThrow(() -> new UnauthorizedException("Authentication required"));
-	}
-
-	private void ensureCanView(Ticket ticket, AuthenticatedUser currentUser) {
-		if (currentUser.role() == Role.REQUESTER && !ticket.getCreatedBy().equals(currentUser.username())) {
-			throw new NotFoundException("Ticket not found");
-		}
 	}
 
 	private TicketCommentResponse toResponse(TicketComment comment) {

@@ -6,10 +6,10 @@ import com.mark.opsdesk.security.AuthenticatedUser;
 import com.mark.opsdesk.security.CurrentUserService;
 import com.mark.opsdesk.ticket.dto.CreateTicketRequest;
 import com.mark.opsdesk.ticket.dto.TicketResponse;
+import com.mark.opsdesk.ticket.dto.UpdateTicketAssigneeRequest;
 import com.mark.opsdesk.ticket.dto.UpdateTicketStatusRequest;
 import com.mark.opsdesk.user.Role;
 import com.mark.opsdesk.user.User;
-import com.mark.opsdesk.user.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -24,14 +24,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -51,7 +47,7 @@ class TicketServiceTest {
 	private CurrentUserService currentUserService;
 
 	@Mock
-	private UserRepository userRepository;
+	private TicketAccessPolicy accessPolicy;
 
 	@Mock
 	private TicketAuditService ticketAuditService;
@@ -62,8 +58,8 @@ class TicketServiceTest {
 	@Test
 	void createTicketCreatesRequesterTicketWithDefaultOpenStatus() {
 		User actor = mock(User.class);
-		when(currentUserService.requireCurrentUser()).thenReturn(new AuthenticatedUser("requester", Role.REQUESTER));
-		when(userRepository.findByUsername("requester")).thenReturn(Optional.of(actor));
+		when(actor.getUsername()).thenReturn("requester");
+		when(accessPolicy.requireTicketCreator()).thenReturn(actor);
 		when(ticketRepository.save(any(Ticket.class))).thenAnswer(invocation -> {
 			Ticket ticket = invocation.getArgument(0);
 			markPersisted(ticket, 42L);
@@ -90,8 +86,8 @@ class TicketServiceTest {
 	}
 
 	@Test
-	void agentCannotCreateTicket() {
-		when(currentUserService.requireCurrentUser()).thenReturn(new AuthenticatedUser("agent", Role.AGENT));
+	void createTicketPropagatesPolicyRejection() {
+		when(accessPolicy.requireTicketCreator()).thenThrow(new ForbiddenException("Access denied"));
 
 		assertThatThrownBy(() -> ticketService.createTicket(new CreateTicketRequest(
 				"Agent created ticket",
@@ -102,22 +98,15 @@ class TicketServiceTest {
 		)))
 				.isInstanceOf(ForbiddenException.class);
 
-		verifyNoInteractions(ticketRepository, userRepository, ticketAuditService);
+		verifyNoInteractions(ticketRepository, ticketAuditService);
 	}
 
 	@Test
-	void agentCanUpdateStatusAndRecordsAudit() {
+	void updateStatusRecordsAuditWhenStatusChanges() {
 		User actor = mock(User.class);
-		Ticket ticket = persistedTicket(
-				7L,
-				"VPN access is down",
-				TicketStatus.OPEN,
-				TicketPriority.MEDIUM,
-				"requester"
-		);
-		when(currentUserService.requireCurrentUser()).thenReturn(new AuthenticatedUser("agent", Role.AGENT));
-		when(userRepository.findByUsername("agent")).thenReturn(Optional.of(actor));
-		when(ticketRepository.findById(7L)).thenReturn(Optional.of(ticket));
+		Ticket ticket = persistedTicket(7L, "VPN access is down", TicketStatus.OPEN, TicketPriority.MEDIUM, "requester");
+		when(accessPolicy.requireTicketManager()).thenReturn(actor);
+		when(accessPolicy.requireViewableTicket(7L)).thenReturn(ticket);
 
 		TicketResponse response = ticketService.updateStatus(
 				7L,
@@ -126,18 +115,37 @@ class TicketServiceTest {
 
 		assertThat(response.status()).isEqualTo(TicketStatus.IN_PROGRESS);
 		assertThat(ticket.getStatus()).isEqualTo(TicketStatus.IN_PROGRESS);
-		verify(ticketAuditService).record(
-				ticket,
-				actor,
-				TicketAuditAction.STATUS_CHANGED,
-				"OPEN",
-				"IN_PROGRESS"
-		);
+		verify(ticketAuditService).record(ticket, actor, TicketAuditAction.STATUS_CHANGED, "OPEN", "IN_PROGRESS");
 	}
 
 	@Test
-	void requesterCannotUpdateStatus() {
-		when(currentUserService.requireCurrentUser()).thenReturn(new AuthenticatedUser("requester", Role.REQUESTER));
+	void updateStatusSkipsAuditWhenStatusIsUnchanged() {
+		User actor = mock(User.class);
+		Ticket ticket = persistedTicket(7L, "VPN access is down", TicketStatus.OPEN, TicketPriority.MEDIUM, "requester");
+		when(accessPolicy.requireTicketManager()).thenReturn(actor);
+		when(accessPolicy.requireViewableTicket(7L)).thenReturn(ticket);
+
+		ticketService.updateStatus(7L, new UpdateTicketStatusRequest(TicketStatus.OPEN));
+
+		verify(ticketAuditService, never()).record(any(), any(), any(), any(), any());
+	}
+
+	@Test
+	void updateAssigneeRecordsOldAndNewAssignee() {
+		User actor = mock(User.class);
+		Ticket ticket = persistedTicket(7L, "VPN access is down", TicketStatus.OPEN, TicketPriority.MEDIUM, "requester");
+		when(accessPolicy.requireTicketManager()).thenReturn(actor);
+		when(accessPolicy.requireViewableTicket(7L)).thenReturn(ticket);
+
+		ticketService.updateAssignee(7L, new UpdateTicketAssigneeRequest("agent"));
+
+		assertThat(ticket.getAssignedTo()).isEqualTo("agent");
+		verify(ticketAuditService).record(ticket, actor, TicketAuditAction.ASSIGNEE_CHANGED, null, "agent");
+	}
+
+	@Test
+	void updateStatusPropagatesPolicyRejection() {
+		when(accessPolicy.requireTicketManager()).thenThrow(new ForbiddenException("Access denied"));
 
 		assertThatThrownBy(() -> ticketService.updateStatus(
 				99L,
@@ -145,20 +153,30 @@ class TicketServiceTest {
 		))
 				.isInstanceOf(ForbiddenException.class);
 
-		verifyNoInteractions(ticketRepository, userRepository, ticketAuditService);
+		verifyNoInteractions(ticketRepository, ticketAuditService);
+	}
+
+	@Test
+	void updateStatusPropagatesMissingTicket() {
+		when(accessPolicy.requireTicketManager()).thenReturn(mock(User.class));
+		when(accessPolicy.requireViewableTicket(404L)).thenThrow(new NotFoundException("Ticket not found"));
+
+		assertThatThrownBy(() -> ticketService.updateStatus(
+				404L,
+				new UpdateTicketStatusRequest(TicketStatus.RESOLVED)
+		))
+				.isInstanceOf(NotFoundException.class);
+
+		verifyNoInteractions(ticketAuditService);
 	}
 
 	@Test
 	void requesterStatusFilterUsesRequesterScopedRepositoryQuery() {
 		Pageable pageable = PageRequest.of(0, 20);
-		Ticket ticket = persistedTicket(
-				11L,
-				"Open monitor issue",
-				TicketStatus.OPEN,
-				TicketPriority.LOW,
-				"requester"
-		);
-		when(currentUserService.requireCurrentUser()).thenReturn(new AuthenticatedUser("requester", Role.REQUESTER));
+		AuthenticatedUser requester = new AuthenticatedUser("requester", Role.REQUESTER);
+		Ticket ticket = persistedTicket(11L, "Open monitor issue", TicketStatus.OPEN, TicketPriority.LOW, "requester");
+		when(currentUserService.requireCurrentUser()).thenReturn(requester);
+		when(accessPolicy.isRequesterScoped(requester)).thenReturn(true);
 		when(ticketRepository.findByCreatedByAndStatus("requester", TicketStatus.OPEN, pageable))
 				.thenReturn(new PageImpl<>(List.of(ticket), pageable, 1));
 
@@ -171,24 +189,21 @@ class TicketServiceTest {
 					assertThat(ticketResponse.status()).isEqualTo(TicketStatus.OPEN);
 					assertThat(ticketResponse.createdBy()).isEqualTo("requester");
 				});
-		verify(ticketRepository).findByCreatedByAndStatus("requester", TicketStatus.OPEN, pageable);
 		verify(ticketRepository, never()).findByStatus(any(TicketStatus.class), any(Pageable.class));
 	}
 
 	@Test
-	void missingTicketReturnsNotFoundOnStatusUpdate() {
-		User actor = mock(User.class);
-		when(currentUserService.requireCurrentUser()).thenReturn(new AuthenticatedUser("agent", Role.AGENT));
-		when(userRepository.findByUsername("agent")).thenReturn(Optional.of(actor));
-		when(ticketRepository.findById(anyLong())).thenReturn(Optional.empty());
+	void agentStatusFilterUsesUnscopedRepositoryQuery() {
+		Pageable pageable = PageRequest.of(0, 20);
+		AuthenticatedUser agent = new AuthenticatedUser("agent", Role.AGENT);
+		when(currentUserService.requireCurrentUser()).thenReturn(agent);
+		when(accessPolicy.isRequesterScoped(agent)).thenReturn(false);
+		when(ticketRepository.findByStatus(TicketStatus.OPEN, pageable)).thenReturn(Page.empty(pageable));
 
-		assertThatThrownBy(() -> ticketService.updateStatus(
-				404L,
-				new UpdateTicketStatusRequest(TicketStatus.RESOLVED)
-		))
-				.isInstanceOf(NotFoundException.class);
+		ticketService.getTickets(TicketStatus.OPEN, null, pageable);
 
-		verify(ticketAuditService, never()).record(any(), eq(actor), any(), isNull(), isNull());
+		verify(ticketRepository).findByStatus(TicketStatus.OPEN, pageable);
+		verify(ticketRepository, never()).findByCreatedByAndStatus(any(), any(), any());
 	}
 
 	private static Ticket persistedTicket(
@@ -198,14 +213,7 @@ class TicketServiceTest {
 			TicketPriority priority,
 			String createdBy
 	) {
-		Ticket ticket = Ticket.create(
-				title,
-				title + " description",
-				status,
-				priority,
-				createdBy,
-				null
-		);
+		Ticket ticket = Ticket.create(title, title + " description", status, priority, createdBy, null);
 		markPersisted(ticket, id);
 		return ticket;
 	}

@@ -1,8 +1,5 @@
 package com.mark.opsdesk.ticket;
 
-import com.mark.opsdesk.common.exception.ForbiddenException;
-import com.mark.opsdesk.common.exception.NotFoundException;
-import com.mark.opsdesk.common.exception.UnauthorizedException;
 import com.mark.opsdesk.security.AuthenticatedUser;
 import com.mark.opsdesk.security.CurrentUserService;
 import com.mark.opsdesk.ticket.dto.CreateTicketRequest;
@@ -10,9 +7,7 @@ import com.mark.opsdesk.ticket.dto.TicketResponse;
 import com.mark.opsdesk.ticket.dto.UpdateTicketAssigneeRequest;
 import com.mark.opsdesk.ticket.dto.UpdateTicketPriorityRequest;
 import com.mark.opsdesk.ticket.dto.UpdateTicketStatusRequest;
-import com.mark.opsdesk.user.Role;
 import com.mark.opsdesk.user.User;
-import com.mark.opsdesk.user.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -25,28 +20,24 @@ public class TicketService {
 
 	private final TicketRepository ticketRepository;
 	private final CurrentUserService currentUserService;
-	private final UserRepository userRepository;
+	private final TicketAccessPolicy accessPolicy;
 	private final TicketAuditService ticketAuditService;
 
 	public TicketService(
 			TicketRepository ticketRepository,
 			CurrentUserService currentUserService,
-			UserRepository userRepository,
+			TicketAccessPolicy accessPolicy,
 			TicketAuditService ticketAuditService
 	) {
 		this.ticketRepository = ticketRepository;
 		this.currentUserService = currentUserService;
-		this.userRepository = userRepository;
+		this.accessPolicy = accessPolicy;
 		this.ticketAuditService = ticketAuditService;
 	}
 
 	@Transactional
 	public TicketResponse createTicket(CreateTicketRequest request) {
-		AuthenticatedUser currentUser = currentUserService.requireCurrentUser();
-		if (currentUser.role() == Role.AGENT) {
-			throw new ForbiddenException("Access denied");
-		}
-		User actor = findUser(currentUser.username());
+		User actor = accessPolicy.requireTicketCreator();
 
 		TicketStatus status = request.status() != null ? request.status() : TicketStatus.OPEN;
 		Ticket ticket = new Ticket(
@@ -54,7 +45,7 @@ public class TicketService {
 				request.description(),
 				status,
 				request.priority(),
-				currentUser.username(),
+				actor.getUsername(),
 				request.assignedTo()
 		);
 
@@ -67,7 +58,7 @@ public class TicketService {
 	@Transactional(readOnly = true)
 	public Page<TicketResponse> getTickets(TicketStatus status, TicketPriority priority, Pageable pageable) {
 		AuthenticatedUser currentUser = currentUserService.requireCurrentUser();
-		if (currentUser.role() == Role.REQUESTER) {
+		if (accessPolicy.isRequesterScoped(currentUser)) {
 			return getRequesterTickets(currentUser.username(), status, priority, pageable).map(this::toResponse);
 		}
 
@@ -88,16 +79,13 @@ public class TicketService {
 
 	@Transactional(readOnly = true)
 	public TicketResponse getTicket(Long id) {
-		Ticket ticket = findTicket(id);
-		ensureCanView(ticket);
-		return toResponse(ticket);
+		return toResponse(accessPolicy.requireViewableTicket(id));
 	}
 
 	@Transactional
 	public TicketResponse updateStatus(Long id, UpdateTicketStatusRequest request) {
-		AuthenticatedUser currentUser = requireAdminOrAgent();
-		User actor = findUser(currentUser.username());
-		Ticket ticket = findTicket(id);
+		User actor = accessPolicy.requireTicketManager();
+		Ticket ticket = accessPolicy.requireViewableTicket(id);
 		TicketStatus oldStatus = ticket.getStatus();
 		ticket.updateStatus(request.status());
 		if (oldStatus != request.status()) {
@@ -114,9 +102,8 @@ public class TicketService {
 
 	@Transactional
 	public TicketResponse updateAssignee(Long id, UpdateTicketAssigneeRequest request) {
-		AuthenticatedUser currentUser = requireAdminOrAgent();
-		User actor = findUser(currentUser.username());
-		Ticket ticket = findTicket(id);
+		User actor = accessPolicy.requireTicketManager();
+		Ticket ticket = accessPolicy.requireViewableTicket(id);
 		String oldAssignee = ticket.getAssignedTo();
 		ticket.updateAssignee(request.assignedTo());
 		if (!Objects.equals(oldAssignee, request.assignedTo())) {
@@ -133,9 +120,8 @@ public class TicketService {
 
 	@Transactional
 	public TicketResponse updatePriority(Long id, UpdateTicketPriorityRequest request) {
-		AuthenticatedUser currentUser = requireAdminOrAgent();
-		User actor = findUser(currentUser.username());
-		Ticket ticket = findTicket(id);
+		User actor = accessPolicy.requireTicketManager();
+		Ticket ticket = accessPolicy.requireViewableTicket(id);
 		TicketPriority oldPriority = ticket.getPriority();
 		ticket.updatePriority(request.priority());
 		if (oldPriority != request.priority()) {
@@ -148,24 +134,6 @@ public class TicketService {
 			);
 		}
 		return toResponse(ticket);
-	}
-
-	private AuthenticatedUser requireAdminOrAgent() {
-		AuthenticatedUser currentUser = currentUserService.requireCurrentUser();
-		if (currentUser.role() != Role.ADMIN && currentUser.role() != Role.AGENT) {
-			throw new ForbiddenException("Access denied");
-		}
-		return currentUser;
-	}
-
-	private Ticket findTicket(Long id) {
-		return ticketRepository.findById(id)
-				.orElseThrow(() -> new NotFoundException("Ticket not found"));
-	}
-
-	private User findUser(String username) {
-		return userRepository.findByUsername(username)
-				.orElseThrow(() -> new UnauthorizedException("Authentication required"));
 	}
 
 	private Page<Ticket> getRequesterTickets(
@@ -184,13 +152,6 @@ public class TicketService {
 			return ticketRepository.findByCreatedByAndPriority(username, priority, pageable);
 		}
 		return ticketRepository.findByCreatedBy(username, pageable);
-	}
-
-	private void ensureCanView(Ticket ticket) {
-		AuthenticatedUser currentUser = currentUserService.requireCurrentUser();
-		if (currentUser.role() == Role.REQUESTER && !ticket.getCreatedBy().equals(currentUser.username())) {
-			throw new NotFoundException("Ticket not found");
-		}
 	}
 
 	private TicketResponse toResponse(Ticket ticket) {
