@@ -1,20 +1,15 @@
-import { useEffect } from 'react'
-import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { isAuthenticated, onSessionCleared } from './authStorage'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { useAuth } from './useAuth'
 
 export function ProtectedRoute() {
   const location = useLocation()
-  const navigate = useNavigate()
+  const { isLoading, user } = useAuth()
 
-  useEffect(
-    () =>
-      onSessionCleared(() => {
-        navigate('/login', { replace: true, state: { from: location } })
-      }),
-    [location, navigate],
-  )
+  if (isLoading) {
+    return null
+  }
 
-  if (!isAuthenticated()) {
+  if (!user) {
     return <Navigate to="/login" replace state={{ from: location }} />
   }
 

@@ -14,7 +14,7 @@ import {
   updateTicketStatus,
 } from '../api/ticketsApi'
 import { getAssignableUsers, type User } from '../api/usersApi'
-import { canEditTickets } from '../auth/authStorage'
+import { useAuth } from '../auth/useAuth'
 import { CommentForm } from '../components/comments/CommentForm'
 import { CommentList } from '../components/comments/CommentList'
 import { TicketDetail } from '../components/tickets/TicketDetail'
@@ -35,7 +35,7 @@ export function TicketDetailPage() {
   const [isUpdatingPriority, setIsUpdatingPriority] = useState(false)
   const [isUpdatingAssignee, setIsUpdatingAssignee] = useState(false)
   const [isAddingComment, setIsAddingComment] = useState(false)
-  const canEditTicketActions = canEditTickets()
+  const { canEditTickets: canEditTicketActions } = useAuth()
 
   useEffect(() => {
     let ignore = false

@@ -3,8 +3,9 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '../App'
-import { clearSession, setCurrentUserRole, setToken } from '../auth/authStorage'
-import { login } from '../api/authApi'
+import { AuthProvider } from '../auth/AuthProvider'
+import { clearSession, setToken } from '../auth/authStorage'
+import { getCurrentUser, login, type CurrentUserRole } from '../api/authApi'
 import {
   createTicket,
   getTicket,
@@ -16,6 +17,7 @@ import {
 import { getAssignableUsers } from '../api/usersApi'
 
 vi.mock('../api/authApi', () => ({
+  getCurrentUser: vi.fn(),
   login: vi.fn(),
 }))
 
@@ -35,6 +37,7 @@ vi.mock('../api/usersApi', () => ({
 }))
 
 const mockLogin = vi.mocked(login)
+const mockGetCurrentUser = vi.mocked(getCurrentUser)
 const mockCreateTicket = vi.mocked(createTicket)
 const mockGetTicket = vi.mocked(getTicket)
 const mockGetTicketComments = vi.mocked(getTicketComments)
@@ -56,15 +59,17 @@ const baseTicket: Ticket = {
 
 function renderApp(initialPath: string) {
   return render(
-    <MemoryRouter initialEntries={[initialPath]}>
-      <App />
-    </MemoryRouter>,
+    <AuthProvider>
+      <MemoryRouter initialEntries={[initialPath]}>
+        <App />
+      </MemoryRouter>
+    </AuthProvider>,
   )
 }
 
-function signInAs(role: 'ADMIN' | 'AGENT' | 'REQUESTER' = 'REQUESTER') {
+function signInAs(role: CurrentUserRole = 'REQUESTER') {
   setToken('test-token')
-  setCurrentUserRole(role)
+  mockGetCurrentUser.mockResolvedValue({ id: 1, username: 'tester', role })
 }
 
 beforeEach(() => {
@@ -171,7 +176,7 @@ describe('OpsDesk user flows', () => {
 
     renderApp('/tickets/new')
 
-    await user.type(screen.getByLabelText(/title/i), '  Printer needs toner  ')
+    await user.type(await screen.findByLabelText(/title/i), '  Printer needs toner  ')
     await user.type(
       screen.getByLabelText(/description/i),
       '  The finance printer is faded.  ',
