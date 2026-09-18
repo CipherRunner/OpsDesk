@@ -14,13 +14,11 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.Map;
@@ -28,15 +26,19 @@ import java.util.Map;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+/**
+ * Shared base for HTTP-level tests. One PostgreSQL container and one Spring context serve every
+ * subclass: the container is started on first use (not as a JUnit-managed {@code @Container}, which
+ * would stop it after the first class) and Testcontainers' Ryuk removes it when the JVM exits.
+ * Tables are emptied before each test instead of rebuilding the context.
+ */
 @SpringBootTest
 @AutoConfigureMockMvc
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @Testcontainers(disabledWithoutDocker = true)
 public abstract class IntegrationTestBase {
 
 	protected static final String TEST_PASSWORD = "password123";
 
-	@Container
 	private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
 
 	@Autowired
@@ -62,6 +64,9 @@ public abstract class IntegrationTestBase {
 
 	@DynamicPropertySource
 	static void registerPostgresProperties(DynamicPropertyRegistry registry) {
+		if (!POSTGRES.isRunning()) {
+			POSTGRES.start();
+		}
 		registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
 		registry.add("spring.datasource.username", POSTGRES::getUsername);
 		registry.add("spring.datasource.password", POSTGRES::getPassword);
