@@ -6,7 +6,7 @@ OpsDesk is not currently deployed by this repository. This document captures the
 
 - Run PostgreSQL 16 as the persistent database.
 - Run the backend as a Spring Boot container listening on port `8080`.
-- Run the frontend as an Nginx container listening on port `80`.
+- Run the frontend as an unprivileged Nginx container listening on port `8080`.
 - Let the frontend proxy `/api` requests to the backend service.
 - Let Flyway run database migrations during backend startup.
 - Keep demo data disabled for production-like environments.
