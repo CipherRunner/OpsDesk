@@ -30,5 +30,6 @@ opsdesk:
     enabled: ${OPS_DESK_DEMO_DATA_ENABLED:false}
   security:
     jwt:
-      secret: ${OPS_DESK_JWT_SECRET:dev-only-change-this-jwt-secret-for-opsdesk}
+      # Required. No fallback on purpose: the app refuses to start without it.
+      secret: ${OPS_DESK_JWT_SECRET:}
       expiration: PT2H

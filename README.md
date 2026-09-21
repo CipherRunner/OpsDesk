@@ -139,6 +139,8 @@ cd backend
 
 The default backend configuration reads PostgreSQL connection settings from environment variables and falls back to `jdbc:postgresql://localhost:5433/opsdesk` with username/password `opsdesk`. The `dev` profile uses `jdbc:postgresql://localhost:5432/opsdesk`.
 
+`OPS_DESK_JWT_SECRET` is required and must be at least 32 characters; the backend refuses to start without it. The `dev` profile ships a local-only fallback, so for day-to-day development run with `--spring.profiles.active=dev` (for example `./mvnw spring-boot:run -Dspring-boot.run.profiles=dev`) or export the variable yourself.
+
 Useful backend environment variables:
 
 - `SPRING_DATASOURCE_URL`

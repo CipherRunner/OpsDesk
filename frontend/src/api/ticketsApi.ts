@@ -14,6 +14,7 @@ export type Ticket = {
   updatedAt: string
   createdBy: string
   assignedTo: string | null
+  allowedStatusTransitions: TicketStatus[]
 }
 
 export type TicketComment = {
@@ -25,16 +26,36 @@ export type TicketComment = {
   createdAt: string
 }
 
+export type TicketAuditAction =
+  | 'TICKET_CREATED'
+  | 'STATUS_CHANGED'
+  | 'ASSIGNEE_CHANGED'
+  | 'PRIORITY_CHANGED'
+  | 'COMMENT_ADDED'
+
+export type TicketAuditEntry = {
+  id: number
+  ticketId: number
+  actorId: number
+  actorUsername: string
+  action: TicketAuditAction
+  oldValue: string | null
+  newValue: string | null
+  createdAt: string
+}
+
 export type TicketFilters = {
   status?: TicketStatus
   priority?: TicketPriority
+  /** Zero-based page index. */
+  page?: number
+  size?: number
 }
 
 export type CreateTicketRequest = {
   title: string
   description: string
   priority: TicketPriority
-  status?: TicketStatus
   assignedTo?: string
 }
 
@@ -42,12 +63,12 @@ export type CreateTicketCommentRequest = {
   content: string
 }
 
-type PageResponse<T> = {
+export type PageResponse<T> = {
   content: T[]
+  page: number
+  size: number
   totalElements: number
   totalPages: number
-  number: number
-  size: number
 }
 
 export async function getTickets(filters: TicketFilters = {}) {
@@ -99,6 +120,12 @@ export async function getTicketComments(ticketId: number) {
   const response = await http.get<TicketComment[]>(
     `/tickets/${ticketId}/comments`,
   )
+
+  return response.data
+}
+
+export async function getTicketAudit(ticketId: number) {
+  const response = await http.get<TicketAuditEntry[]>(`/tickets/${ticketId}/audit`)
 
   return response.data
 }

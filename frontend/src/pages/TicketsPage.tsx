@@ -1,86 +1,85 @@
-import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { getApiErrorMessage } from '../api/apiError'
-import {
-  getTickets,
-  type Ticket,
-  type TicketPriority,
-  type TicketStatus,
-} from '../api/ticketsApi'
+import type { TicketPriority, TicketStatus } from '../api/ticketsApi'
+import { Pagination } from '../components/tickets/Pagination'
 import { TicketTable } from '../components/tickets/TicketTable'
+import { TICKET_PRIORITIES, TICKET_STATUSES, formatEnumLabel } from '../domain/ticket'
+import { useTickets } from '../queries/tickets'
 
-const statuses: Array<TicketStatus | ''> = [
-  '',
-  'OPEN',
-  'IN_PROGRESS',
-  'RESOLVED',
-  'CLOSED',
-]
+const statuses: Array<TicketStatus | ''> = ['', ...TICKET_STATUSES]
+const priorities: Array<TicketPriority | ''> = ['', ...TICKET_PRIORITIES]
 
-const priorities: Array<TicketPriority | ''> = [
-  '',
-  'LOW',
-  'MEDIUM',
-  'HIGH',
-  'URGENT',
-]
-
-function formatOption(value: string) {
-  if (!value) {
-    return 'All'
-  }
-
-  return value
-    .toLowerCase()
-    .split('_')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ')
+function formatFilterOption(value: string) {
+  return value ? formatEnumLabel(value) : 'All'
 }
 
+function readStatus(value: string | null): TicketStatus | '' {
+  return TICKET_STATUSES.includes(value as TicketStatus) ? (value as TicketStatus) : ''
+}
+
+function readPriority(value: string | null): TicketPriority | '' {
+  return TICKET_PRIORITIES.includes(value as TicketPriority) ? (value as TicketPriority) : ''
+}
+
+const PAGE_SIZE = 20
+
+/** The URL shows pages 1-based for people; the API counts from 0. */
+function readPage(value: string | null): number {
+  const page = Number(value)
+
+  return Number.isInteger(page) && page >= 1 ? page - 1 : 0
+}
+
+/**
+ * Filters live in the query string so a filtered queue survives reload and can be shared.
+ * Unknown values are treated as "All" rather than sent to the API.
+ */
 export function TicketsPage() {
-  const [tickets, setTickets] = useState<Ticket[]>([])
-  const [statusFilter, setStatusFilter] = useState<TicketStatus | ''>('')
-  const [priorityFilter, setPriorityFilter] = useState<TicketPriority | ''>('')
-  const [error, setError] = useState('')
-  const [isLoading, setIsLoading] = useState(true)
+  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
 
-  useEffect(() => {
-    let ignore = false
+  const statusFilter = readStatus(searchParams.get('status'))
+  const priorityFilter = readPriority(searchParams.get('priority'))
+  const page = readPage(searchParams.get('page'))
 
-    async function loadTickets() {
-      setIsLoading(true)
-      setError('')
+  const ticketsQuery = useTickets({
+    priority: priorityFilter || undefined,
+    status: statusFilter || undefined,
+    page,
+    size: PAGE_SIZE,
+  })
 
-      try {
-        const response = await getTickets({
-          priority: priorityFilter || undefined,
-          status: statusFilter || undefined,
-        })
+  function updateParams(changes: Record<string, string | null>) {
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current)
 
-        if (!ignore) {
-          setTickets(response.content)
+        for (const [name, value] of Object.entries(changes)) {
+          if (value) {
+            next.set(name, value)
+          } else {
+            next.delete(name)
+          }
         }
-      } catch (requestError) {
-        if (!ignore) {
-          setError(
-            getApiErrorMessage(requestError, 'Failed to load tickets.'),
-          )
-          setTickets([])
-        }
-      } finally {
-        if (!ignore) {
-          setIsLoading(false)
-        }
-      }
-    }
 
-    loadTickets()
+        return next
+      },
+      { replace: true },
+    )
+  }
 
-    return () => {
-      ignore = true
-    }
-  }, [priorityFilter, statusFilter])
+  function updateFilter(name: 'status' | 'priority', value: string) {
+    // A new filter means a new result set, so always start from its first page.
+    updateParams({ [name]: value, page: null })
+  }
+
+  function changePage(nextPage: number) {
+    updateParams({ page: nextPage > 0 ? String(nextPage + 1) : null })
+  }
+
+  const error = ticketsQuery.error
+    ? getApiErrorMessage(ticketsQuery.error, 'Failed to load tickets.')
+    : ''
 
   return (
     <section className="page">
@@ -99,14 +98,12 @@ export function TicketsPage() {
         <label className="field compact-field">
           Status
           <select
-            onChange={(event) =>
-              setStatusFilter(event.target.value as TicketStatus | '')
-            }
+            onChange={(event) => updateFilter('status', event.target.value)}
             value={statusFilter}
           >
             {statuses.map((status) => (
               <option key={status || 'all'} value={status}>
-                {formatOption(status)}
+                {formatFilterOption(status)}
               </option>
             ))}
           </select>
@@ -115,14 +112,12 @@ export function TicketsPage() {
         <label className="field compact-field">
           Priority
           <select
-            onChange={(event) =>
-              setPriorityFilter(event.target.value as TicketPriority | '')
-            }
+            onChange={(event) => updateFilter('priority', event.target.value)}
             value={priorityFilter}
           >
             {priorities.map((priority) => (
               <option key={priority || 'all'} value={priority}>
-                {formatOption(priority)}
+                {formatFilterOption(priority)}
               </option>
             ))}
           </select>
@@ -131,13 +126,21 @@ export function TicketsPage() {
 
       {error ? <p className="form-error">{error}</p> : null}
 
-      {isLoading ? (
+      {ticketsQuery.isPending ? (
         <div className="panel loading-panel">Loading tickets...</div>
       ) : (
-        <TicketTable
-          tickets={tickets}
-          onTicketClick={(ticket) => navigate(`/tickets/${ticket.id}`)}
-        />
+        <>
+          <TicketTable
+            tickets={ticketsQuery.data?.content ?? []}
+            onTicketClick={(ticket) => navigate(`/tickets/${ticket.id}`)}
+          />
+          <Pagination
+            page={ticketsQuery.data?.page ?? page}
+            totalPages={ticketsQuery.data?.totalPages ?? 0}
+            totalElements={ticketsQuery.data?.totalElements ?? 0}
+            onPageChange={changePage}
+          />
+        </>
       )}
     </section>
   )

@@ -4,6 +4,7 @@ import com.mark.opsdesk.ticket.TicketPriority;
 import com.mark.opsdesk.ticket.TicketStatus;
 
 import java.time.Instant;
+import java.util.List;
 
 public record TicketResponse(
 		Long id,
@@ -14,6 +15,7 @@ public record TicketResponse(
 		Instant createdAt,
 		Instant updatedAt,
 		String createdBy,
-		String assignedTo
+		String assignedTo,
+		List<TicketStatus> allowedStatusTransitions
 ) {
 }

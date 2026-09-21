@@ -57,7 +57,6 @@ class TicketSecurityIntegrationTest extends IntegrationTestBase {
 						.content(json(Map.of(
 								"title", "Shared mailbox is unavailable",
 								"description", "Requester cannot open the team mailbox.",
-								"status", TicketStatus.OPEN,
 								"priority", TicketPriority.HIGH
 						))))
 				.andExpect(status().isCreated())

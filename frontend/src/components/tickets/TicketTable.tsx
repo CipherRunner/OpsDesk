@@ -1,19 +1,11 @@
 import type { Ticket } from '../../api/ticketsApi'
 import { PriorityBadge } from './PriorityBadge'
 import { TicketStatusBadge } from './TicketStatusBadge'
+import { formatDateTime } from '../../domain/dates'
 
 type TicketTableProps = {
   tickets: Ticket[]
   onTicketClick: (ticket: Ticket) => void
-}
-
-const dateFormatter = new Intl.DateTimeFormat(undefined, {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-})
-
-function formatDate(value: string) {
-  return dateFormatter.format(new Date(value))
 }
 
 export function TicketTable({ tickets, onTicketClick }: TicketTableProps) {
@@ -57,7 +49,7 @@ export function TicketTable({ tickets, onTicketClick }: TicketTableProps) {
                 <PriorityBadge priority={ticket.priority} />
               </td>
               <td>{ticket.assignedTo ?? 'Unassigned'}</td>
-              <td>{formatDate(ticket.createdAt)}</td>
+              <td>{formatDateTime(ticket.createdAt)}</td>
             </tr>
           ))}
         </tbody>

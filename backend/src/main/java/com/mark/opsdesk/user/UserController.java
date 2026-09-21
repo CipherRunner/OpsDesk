@@ -28,6 +28,11 @@ public class UserController {
 		return userService.getUsers();
 	}
 
+	@GetMapping("/assignable")
+	public List<UserResponse> getAssignableUsers() {
+		return userService.getAssignableUsers();
+	}
+
 	@PostMapping
 	public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
 		return ResponseEntity.status(HttpStatus.CREATED).body(userService.createUser(request));

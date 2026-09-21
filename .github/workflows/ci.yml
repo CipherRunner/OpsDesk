@@ -12,31 +12,16 @@ jobs:
     name: Backend tests
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: opsdesk_test
-          POSTGRES_USER: opsdesk
-          POSTGRES_PASSWORD: opsdesk
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U opsdesk -d opsdesk_test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     defaults:
       run:
         working-directory: backend
 
+    # Integration tests start their own PostgreSQL through Testcontainers,
+    # so no database service is needed here. Docker is available on
+    # ubuntu-latest runners by default.
     env:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/opsdesk_test
-      SPRING_DATASOURCE_USERNAME: opsdesk
-      SPRING_DATASOURCE_PASSWORD: opsdesk
-      OPSDESK_JWT_SECRET: ci-test-secret-ci-test-secret-ci-test-secret
-      OPSDESK_DEMO_DATA_ENABLED: false
+      OPS_DESK_JWT_SECRET: ci-test-secret-ci-test-secret-ci-test-secret
+      OPS_DESK_DEMO_DATA_ENABLED: "false"
 
     steps:
       - name: Checkout repository
@@ -50,10 +35,10 @@ jobs:
           cache: maven
 
       - name: Run backend tests
-        run: mvn test
+        run: ./mvnw -B test
 
   frontend:
-    name: Frontend build
+    name: Frontend checks
     runs-on: ubuntu-latest
 
     defaults:
@@ -74,5 +59,39 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Lint frontend
+        run: npm run lint
+
+      - name: Test frontend
+        run: npm test
+
       - name: Build frontend
         run: npm run build
+
+  docker:
+    name: Docker build (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - service: backend
+            context: ./backend
+          - service: frontend
+            context: ./frontend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Build only: this proves the Dockerfile still works on every push and
+      # pull request. Publishing happens in release.yml on main.
+      - name: Build image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

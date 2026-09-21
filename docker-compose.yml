@@ -23,18 +23,24 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-opsdesk}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-opsdesk}
       OPS_DESK_JWT_SECRET: ${OPS_DESK_JWT_SECRET:-dev-only-change-this-jwt-secret-for-local-compose}
-      SPRING_PROFILES_ACTIVE: docker
       # demo only
       OPS_DESK_DEMO_DATA_ENABLED: "true"
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
   frontend:
     build:
       context: ./frontend
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - "${FRONTEND_PORT:-3000}:8080"
 

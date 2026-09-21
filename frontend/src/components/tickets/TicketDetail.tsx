@@ -6,6 +6,8 @@ import type {
 import type { User } from '../../api/usersApi'
 import { PriorityBadge } from './PriorityBadge'
 import { TicketStatusBadge } from './TicketStatusBadge'
+import { formatDateTime } from '../../domain/dates'
+import { TICKET_PRIORITIES, formatEnumLabel } from '../../domain/ticket'
 
 type TicketDetailProps = {
   assigneeOptions: User[]
@@ -18,26 +20,6 @@ type TicketDetailProps = {
   onAssigneeChange: (assignedTo: string) => Promise<void> | void
   onPriorityChange: (priority: TicketPriority) => Promise<void> | void
   onStatusChange: (status: TicketStatus) => Promise<void> | void
-}
-
-const statuses: TicketStatus[] = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']
-const priorities: TicketPriority[] = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
-
-const dateFormatter = new Intl.DateTimeFormat(undefined, {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-})
-
-function formatOption(value: string) {
-  return value
-    .toLowerCase()
-    .split('_')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ')
-}
-
-function formatDate(value: string) {
-  return dateFormatter.format(new Date(value))
 }
 
 export function TicketDetail({
@@ -55,6 +37,10 @@ export function TicketDetail({
   const hasCurrentAssigneeOption = assigneeOptions.some(
     (user) => user.username === ticket.assignedTo,
   )
+  const statusOptions: TicketStatus[] = [
+    ticket.status,
+    ...ticket.allowedStatusTransitions,
+  ]
 
   return (
     <div className="panel ticket-detail">
@@ -80,14 +66,14 @@ export function TicketDetail({
               }
               value={ticket.status}
             >
-              {statuses.map((status) => (
+              {statusOptions.map((status) => (
                 <option key={status} value={status}>
-                  {formatOption(status)}
+                  {formatEnumLabel(status)}
                 </option>
               ))}
             </select>
           ) : (
-            <span className="readonly-field">{formatOption(ticket.status)}</span>
+            <span className="readonly-field">{formatEnumLabel(ticket.status)}</span>
           )}
         </label>
 
@@ -101,15 +87,15 @@ export function TicketDetail({
               }
               value={ticket.priority}
             >
-              {priorities.map((priority) => (
+              {TICKET_PRIORITIES.map((priority) => (
                 <option key={priority} value={priority}>
-                  {formatOption(priority)}
+                  {formatEnumLabel(priority)}
                 </option>
               ))}
             </select>
           ) : (
             <span className="readonly-field">
-              {formatOption(ticket.priority)}
+              {formatEnumLabel(ticket.priority)}
             </span>
           )}
         </label>
@@ -130,7 +116,7 @@ export function TicketDetail({
               ) : null}
               {assigneeOptions.map((user) => (
                 <option key={user.id} value={user.username}>
-                  {user.username} ({formatOption(user.role)})
+                  {user.username} ({formatEnumLabel(user.role)})
                 </option>
               ))}
             </select>
@@ -148,12 +134,12 @@ export function TicketDetail({
 
         <div className="detail-item">
           <span>Created</span>
-          <strong>{formatDate(ticket.createdAt)}</strong>
+          <strong>{formatDateTime(ticket.createdAt)}</strong>
         </div>
 
         <div className="detail-item">
           <span>Updated</span>
-          <strong>{formatDate(ticket.updatedAt)}</strong>
+          <strong>{formatDateTime(ticket.updatedAt)}</strong>
         </div>
       </div>
 

@@ -1,20 +1,22 @@
 package com.mark.opsdesk.ticket;
 
+import com.mark.opsdesk.common.persistence.AuditableEntity;
+import com.mark.opsdesk.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-
-import java.time.Instant;
 
 @Entity
 @Table(name = "tickets")
-public class Ticket {
+public class Ticket extends AuditableEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,17 +36,13 @@ public class Ticket {
 	@Column(nullable = false, length = 32)
 	private TicketPriority priority;
 
-	@Column(name = "created_at", nullable = false, updatable = false)
-	private Instant createdAt;
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "created_by_id", nullable = false, updatable = false)
+	private User createdBy;
 
-	@Column(name = "updated_at", nullable = false)
-	private Instant updatedAt;
-
-	@Column(name = "created_by", nullable = false)
-	private String createdBy;
-
-	@Column(name = "assigned_to")
-	private String assignedTo;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "assigned_to_id")
+	private User assignedTo;
 
 	protected Ticket() {
 	}
@@ -54,8 +52,8 @@ public class Ticket {
 			String description,
 			TicketStatus status,
 			TicketPriority priority,
-			String createdBy,
-			String assignedTo
+			User createdBy,
+			User assignedTo
 	) {
 		return new Ticket(title, description, status, priority, createdBy, assignedTo);
 	}
@@ -65,8 +63,8 @@ public class Ticket {
 			String description,
 			TicketStatus status,
 			TicketPriority priority,
-			String createdBy,
-			String assignedTo
+			User createdBy,
+			User assignedTo
 	) {
 		this.title = title;
 		this.description = description;
@@ -74,13 +72,6 @@ public class Ticket {
 		this.priority = priority;
 		this.createdBy = createdBy;
 		this.assignedTo = assignedTo;
-	}
-
-	@PrePersist
-	void onCreate() {
-		Instant now = Instant.now();
-		this.createdAt = now;
-		this.updatedAt = now;
 	}
 
 	public Long getId() {
@@ -99,9 +90,18 @@ public class Ticket {
 		return status;
 	}
 
-	public void updateStatus(TicketStatus status) {
-		this.status = status;
-		touch();
+	/**
+	 * Moves the ticket along its lifecycle. Setting the current status again is a no-op; a move the
+	 * lifecycle does not allow fails with {@link InvalidTicketTransitionException}.
+	 */
+	public void updateStatus(TicketStatus newStatus) {
+		if (newStatus == this.status) {
+			return;
+		}
+		if (!this.status.canTransitionTo(newStatus)) {
+			throw new InvalidTicketTransitionException(this.status, newStatus);
+		}
+		this.status = newStatus;
 	}
 
 	public TicketPriority getPriority() {
@@ -110,31 +110,17 @@ public class Ticket {
 
 	public void updatePriority(TicketPriority priority) {
 		this.priority = priority;
-		touch();
 	}
 
-	public Instant getCreatedAt() {
-		return createdAt;
-	}
-
-	public Instant getUpdatedAt() {
-		return updatedAt;
-	}
-
-	public String getCreatedBy() {
+	public User getCreatedBy() {
 		return createdBy;
 	}
 
-	public String getAssignedTo() {
+	public User getAssignedTo() {
 		return assignedTo;
 	}
 
-	public void updateAssignee(String assignedTo) {
+	public void updateAssignee(User assignedTo) {
 		this.assignedTo = assignedTo;
-		touch();
-	}
-
-	private void touch() {
-		this.updatedAt = Instant.now();
 	}
 }

@@ -1,30 +1,19 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { useState } from 'react'
 import { getApiErrorMessage } from '../api/apiError'
-import {
-  createTicket,
-  type CreateTicketRequest,
-} from '../api/ticketsApi'
+import type { CreateTicketRequest } from '../api/ticketsApi'
 import { TicketForm } from '../components/tickets/TicketForm'
+import { useCreateTicket } from '../queries/tickets'
 
 export function NewTicketPage() {
-  const [error, setError] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const navigate = useNavigate()
+  const createTicket = useCreateTicket()
 
   async function handleCreateTicket(request: CreateTicketRequest) {
-    setError('')
-    setIsSubmitting(true)
-
     try {
-      const ticket = await createTicket(request)
+      const ticket = await createTicket.mutateAsync(request)
       navigate(`/tickets/${ticket.id}`)
-    } catch (requestError) {
-      setError(
-        getApiErrorMessage(requestError, 'Failed to create ticket.'),
-      )
-    } finally {
-      setIsSubmitting(false)
+    } catch {
+      // The mutation keeps the error; it is rendered below.
     }
   }
 
@@ -42,8 +31,12 @@ export function NewTicketPage() {
       </div>
 
       <TicketForm
-        error={error}
-        isSubmitting={isSubmitting}
+        error={
+          createTicket.error
+            ? getApiErrorMessage(createTicket.error, 'Failed to create ticket.')
+            : ''
+        }
+        isSubmitting={createTicket.isPending}
         onSubmit={handleCreateTicket}
       />
     </section>

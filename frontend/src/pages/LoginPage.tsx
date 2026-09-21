@@ -1,12 +1,7 @@
 import type { FormEvent } from 'react'
 import { useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { login } from '../api/authApi'
-import {
-  isAuthenticated,
-  setCurrentUserRole,
-  setToken,
-} from '../auth/authStorage'
+import { useAuth } from '../auth/useAuth'
 
 type LoginLocationState = {
   from?: {
@@ -21,10 +16,11 @@ export function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
+  const { user, login } = useAuth()
   const redirectTo =
     (location.state as LoginLocationState | null)?.from?.pathname ?? '/tickets'
 
-  if (isAuthenticated()) {
+  if (user) {
     return <Navigate to="/tickets" replace />
   }
 
@@ -34,10 +30,7 @@ export function LoginPage() {
     setIsSubmitting(true)
 
     try {
-      const response = await login({ username, password })
-
-      setToken(response.token)
-      setCurrentUserRole(response.user.role)
+      await login({ username, password })
       navigate(redirectTo, { replace: true })
     } catch {
       setError('Invalid username or password.')

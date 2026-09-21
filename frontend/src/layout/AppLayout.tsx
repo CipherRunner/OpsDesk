@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { removeToken } from '../auth/authStorage'
+import { useAuth } from '../auth/useAuth'
 
 const navItems = [
   { to: '/tickets', label: 'Tickets' },
@@ -7,9 +7,10 @@ const navItems = [
 
 export function AppLayout() {
   const navigate = useNavigate()
+  const { user, logout } = useAuth()
 
   function handleLogout() {
-    removeToken()
+    logout()
     navigate('/login', { replace: true })
   }
 
@@ -34,6 +35,12 @@ export function AppLayout() {
             </NavLink>
           ))}
         </nav>
+
+        {user ? (
+          <p className="helper-text sidebar-user">
+            {user.username} · {user.role.toLowerCase()}
+          </p>
+        ) : null}
 
         <button className="logout-button" type="button" onClick={handleLogout}>
           Logout

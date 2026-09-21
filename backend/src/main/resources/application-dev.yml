@@ -15,3 +15,9 @@ spring:
 
   flyway:
     enabled: true
+
+opsdesk:
+  security:
+    jwt:
+      # Local development only. Never reuse this value outside the dev profile.
+      secret: ${OPS_DESK_JWT_SECRET:dev-only-change-this-jwt-secret-for-opsdesk-local}

@@ -6,7 +6,7 @@ OpsDesk is not currently deployed by this repository. This document captures the
 
 - Run PostgreSQL 16 as the persistent database.
 - Run the backend as a Spring Boot container listening on port `8080`.
-- Run the frontend as an Nginx container listening on port `80`.
+- Run the frontend as an unprivileged Nginx container listening on port `8080`.
 - Let the frontend proxy `/api` requests to the backend service.
 - Let Flyway run database migrations during backend startup.
 - Keep demo data disabled for production-like environments.
@@ -24,7 +24,6 @@ For `docker-compose.prod.yml`, set these values outside the repository before ru
 | `POSTGRES_DB` | No | Database name. Defaults to `opsdesk`. |
 | `POSTGRES_USER` | No | Database user. Defaults to `opsdesk`. |
 | `FRONTEND_PORT` | No | Host port for the frontend container. Defaults to `3000`. |
-| `SPRING_PROFILES_ACTIVE` | No | Defaults to `docker` in the production-like compose file. |
 
 If the backend is deployed outside Compose, provide the equivalent Spring datasource variables directly:
 

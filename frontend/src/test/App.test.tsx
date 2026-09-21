@@ -1,21 +1,25 @@
-import { render, screen, within } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '../App'
-import { setCurrentUserRole, setToken } from '../auth/authStorage'
-import { login } from '../api/authApi'
+import { AuthProvider } from '../auth/AuthProvider'
+import { clearSession, setToken } from '../auth/authStorage'
+import { getCurrentUser, login, type CurrentUserRole } from '../api/authApi'
 import {
   createTicket,
   getTicket,
+  getTicketAudit,
   getTicketComments,
   getTickets,
   type Ticket,
   type TicketComment,
 } from '../api/ticketsApi'
-import { getUsers } from '../api/usersApi'
+import { getAssignableUsers } from '../api/usersApi'
 
 vi.mock('../api/authApi', () => ({
+  getCurrentUser: vi.fn(),
   login: vi.fn(),
 }))
 
@@ -23,6 +27,7 @@ vi.mock('../api/ticketsApi', () => ({
   createTicket: vi.fn(),
   createTicketComment: vi.fn(),
   getTicket: vi.fn(),
+  getTicketAudit: vi.fn(),
   getTicketComments: vi.fn(),
   getTickets: vi.fn(),
   updateTicketAssignee: vi.fn(),
@@ -31,15 +36,17 @@ vi.mock('../api/ticketsApi', () => ({
 }))
 
 vi.mock('../api/usersApi', () => ({
-  getUsers: vi.fn(),
+  getAssignableUsers: vi.fn(),
 }))
 
 const mockLogin = vi.mocked(login)
+const mockGetCurrentUser = vi.mocked(getCurrentUser)
 const mockCreateTicket = vi.mocked(createTicket)
 const mockGetTicket = vi.mocked(getTicket)
 const mockGetTicketComments = vi.mocked(getTicketComments)
+const mockGetTicketAudit = vi.mocked(getTicketAudit)
 const mockGetTickets = vi.mocked(getTickets)
-const mockGetUsers = vi.mocked(getUsers)
+const mockGetAssignableUsers = vi.mocked(getAssignableUsers)
 
 const baseTicket: Ticket = {
   id: 7,
@@ -51,19 +58,31 @@ const baseTicket: Ticket = {
   createdBy: 'alice',
   createdAt: '2026-06-20T09:15:00Z',
   updatedAt: '2026-06-21T10:30:00Z',
+  allowedStatusTransitions: ['IN_PROGRESS', 'RESOLVED', 'CLOSED'],
 }
 
 function renderApp(initialPath: string) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  })
+
   return render(
-    <MemoryRouter initialEntries={[initialPath]}>
-      <App />
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <MemoryRouter initialEntries={[initialPath]}>
+          <App />
+        </MemoryRouter>
+      </AuthProvider>
+    </QueryClientProvider>,
   )
 }
 
-function signInAs(role: 'ADMIN' | 'AGENT' | 'REQUESTER' = 'REQUESTER') {
+function signInAs(role: CurrentUserRole = 'REQUESTER') {
   setToken('test-token')
-  setCurrentUserRole(role)
+  mockGetCurrentUser.mockResolvedValue({ id: 1, username: 'tester', role })
 }
 
 beforeEach(() => {
@@ -71,14 +90,15 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockGetTickets.mockResolvedValue({
     content: [],
-    number: 0,
+    page: 0,
     size: 20,
     totalElements: 0,
     totalPages: 0,
   })
   mockGetTicket.mockResolvedValue(baseTicket)
   mockGetTicketComments.mockResolvedValue([])
-  mockGetUsers.mockResolvedValue([])
+  mockGetTicketAudit.mockResolvedValue([])
+  mockGetAssignableUsers.mockResolvedValue([])
 })
 
 describe('OpsDesk user flows', () => {
@@ -107,6 +127,19 @@ describe('OpsDesk user flows', () => {
     expect(await screen.findByRole('heading', { name: 'Tickets' })).toBeInTheDocument()
   })
 
+  it('returns to the login page when the session is cleared', async () => {
+    signInAs()
+
+    renderApp('/tickets')
+    expect(await screen.findByRole('heading', { name: 'Tickets' })).toBeInTheDocument()
+
+    act(() => {
+      clearSession()
+    })
+
+    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument()
+  })
+
   it('renders loaded tickets on the ticket list page', async () => {
     signInAs()
     mockGetTickets.mockResolvedValue({
@@ -121,7 +154,7 @@ describe('OpsDesk user flows', () => {
           assignedTo: null,
         },
       ],
-      number: 0,
+      page: 0,
       size: 20,
       totalElements: 2,
       totalPages: 1,
@@ -136,6 +169,69 @@ describe('OpsDesk user flows', () => {
     expect(mockGetTickets).toHaveBeenCalledWith({
       priority: undefined,
       status: undefined,
+      page: 0,
+      size: 20,
+    })
+  })
+
+  it('reads list filters from the URL and writes changes back', async () => {
+    const user = userEvent.setup()
+    signInAs()
+
+    renderApp('/tickets?status=RESOLVED&priority=BOGUS')
+
+    expect(await screen.findByRole('heading', { name: 'Tickets' })).toBeInTheDocument()
+    expect(screen.getByLabelText(/status/i)).toHaveValue('RESOLVED')
+    expect(screen.getByLabelText(/priority/i)).toHaveValue('')
+    expect(mockGetTickets).toHaveBeenCalledWith({
+      priority: undefined,
+      status: 'RESOLVED',
+      page: 0,
+      size: 20,
+    })
+
+    await user.selectOptions(screen.getByLabelText(/priority/i), 'HIGH')
+
+    expect(mockGetTickets).toHaveBeenLastCalledWith({
+      priority: 'HIGH',
+      status: 'RESOLVED',
+      page: 0,
+      size: 20,
+    })
+  })
+
+  it('pages through the queue and resets to the first page on filter change', async () => {
+    const user = userEvent.setup()
+    signInAs()
+    mockGetTickets.mockResolvedValue({
+      content: [baseTicket],
+      page: 0,
+      size: 20,
+      totalElements: 45,
+      totalPages: 3,
+    })
+
+    renderApp('/tickets')
+
+    expect(await screen.findByText(/page 1 of 3/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /previous/i })).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: /next/i }))
+
+    expect(mockGetTickets).toHaveBeenLastCalledWith({
+      priority: undefined,
+      status: undefined,
+      page: 1,
+      size: 20,
+    })
+
+    await user.selectOptions(screen.getByLabelText(/status/i), 'OPEN')
+
+    expect(mockGetTickets).toHaveBeenLastCalledWith({
+      priority: undefined,
+      status: 'OPEN',
+      page: 0,
+      size: 20,
     })
   })
 
@@ -157,7 +253,7 @@ describe('OpsDesk user flows', () => {
 
     renderApp('/tickets/new')
 
-    await user.type(screen.getByLabelText(/title/i), '  Printer needs toner  ')
+    await user.type(await screen.findByLabelText(/title/i), '  Printer needs toner  ')
     await user.type(
       screen.getByLabelText(/description/i),
       '  The finance printer is faded.  ',
@@ -193,6 +289,28 @@ describe('OpsDesk user flows', () => {
     signInAs()
     mockGetTicket.mockResolvedValue(baseTicket)
     mockGetTicketComments.mockResolvedValue(comments)
+    mockGetTicketAudit.mockResolvedValue([
+      {
+        id: 1,
+        ticketId: baseTicket.id,
+        actorId: 3,
+        actorUsername: 'alice',
+        action: 'TICKET_CREATED',
+        oldValue: null,
+        newValue: null,
+        createdAt: '2026-06-20T09:15:00Z',
+      },
+      {
+        id: 2,
+        ticketId: baseTicket.id,
+        actorId: 2,
+        actorUsername: 'agent.smith',
+        action: 'STATUS_CHANGED',
+        oldValue: 'OPEN',
+        newValue: 'IN_PROGRESS',
+        createdAt: '2026-06-21T10:30:00Z',
+      },
+    ])
 
     renderApp('/tickets/7')
 
@@ -215,5 +333,8 @@ describe('OpsDesk user flows', () => {
     expect(within(detailPanel as HTMLElement).getByText('Updated')).toBeInTheDocument()
     expect(mockGetTicket).toHaveBeenCalledWith(7)
     expect(mockGetTicketComments).toHaveBeenCalledWith(7)
+    expect(await screen.findByText(/created the ticket/i)).toBeInTheDocument()
+    expect(screen.getByText(/changed status from Open to In progress/i)).toBeInTheDocument()
+    expect(mockGetTicketAudit).toHaveBeenCalledWith(7)
   })
 })
